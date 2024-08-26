@@ -15,7 +15,30 @@ upgrade_or_install_aur_package() {
             install_aur_package
             ;;
         3)
-            wget https://fastgit.cc/
+            wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/yay-plus.sh -o yay-plus1.sh
+            exit_status=$?
+            if [ $exit_status -eq 0 ]; then
+                md5sum -c verify.md5
+                if [ $? -eq 0 ]; then
+                    echo "下载成功"
+                else
+                    echo "MD5校验失败，请检查网络连接，或更改DNS"
+                    sleep 3
+                    upgrade_or_install_aur_package
+                fi
+            else
+                echo "下载失败，请检查网络连接"
+                sleep 3
+                upgrade_or_install_aur_package
+            fi
+            chmod +x yay-plus1.sh
+            echo "升级成功，重新运行中"
+            mv yay-plus1.sh yay-plus.sh
+            sudo ./yay-plus.sh
+            ;;
+        4)
+            exit 0
+            ;;
     esac
 }
 
