@@ -15,9 +15,21 @@ upgrade_or_install_aur_package() {
             install_aur_package
             ;;
         3)
-            wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/yay-plus.sh -o yay-plus1.sh
-            wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/verify.md5 -o verify.md5
-            exit_status=$?
+            echo "是否使用代理 (y/n)"
+            read -p "请输入选项: " choice
+            case $choice in
+                y)
+                    wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/yay-plus.sh -o yay-plus1.sh
+                    exit_status=$?
+                    wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/verify.md5 -o verify.md5
+
+                    ;;
+                n)
+                    wget https://github.com/Colin130716/yay-plus/raw/master/yay-plus.sh -o yay-plus1.sh
+                    exit_status=$?
+                    wget https://github.com/Colin130716/yay-plus/raw/master/verify.md5 -o verify.md5
+                    ;;
+            esac
             if [ $exit_status -eq 0 ]; then
                 md5sum -c verify.md5
                 if [ $? -eq 0 ]; then
