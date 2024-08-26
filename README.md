@@ -1,7 +1,7 @@
 # AUR_Quick_Download_for_Chinese
 
 ## 简介
-这是一个用于快速下载AUR中文软件包的脚本，使用Shell编写，基于AUR官方git clone的url。
+这是一个用于快速下载AUR软件包的脚本，使用Shell编写，基于AUR官方git clone的url。
 
 ## 使用方法
 1. 安装git
