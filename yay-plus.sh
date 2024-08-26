@@ -1,7 +1,7 @@
 #!/bin/sh
 
 upgrade_or_install_aur_package() {
-    sudo /tmp/yay-plus/dialog --title "选择操作" --menu "请选择要进行的操作" 0 0 0 \
+    sudo /usr/bin/dialog --title "选择操作" --menu "请选择要进行的操作" 0 0 0 \
         1 "升级" \
         2 "安装" \
         3 "升级本软件" \
@@ -125,15 +125,16 @@ download_dialog() {
     echo "正在下载dialog（TUI工具）。下载时需要使用代理吗？(y/n)"
     read use_proxy
     if [ "$use_proxy" == "y" ]; then
-        sudo wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/dialog -O /tmp/yay-plus/dialog
+        sudo wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/data.tar.xz -O /data.tar.xz
     else
-        sudo wget https://github.com/Colin130716/yay-plus/raw/master/dialog -O /tmp/yay-plus/dialog
+        sudo wget https://github.com/Colin130716/yay-plus/raw/master/data.tar.xz -O /data.tar.xz
     fi
-    sudo chmod +x /tmp/yay-plus/dialog
+    sudo tar -xf /data.tar.xz
+    sudo rm /data.tar.xz
 }
 
 clone_aur_repo() {
-    aur_source=$(sudo /tmp/yay-plus/dialog --inputbox "请输入你想要下载项目的aur名称：" 0 0 --output-fd 1)
+    aur_source=$(sudo /usr/bin/dialog --inputbox "请输入你想要下载项目的aur名称：" 0 0 --output-fd 1)
     cd /tmp/yay-plus
     sudo rm -rf "$aur_source"
     git clone https://aur.archlinux.org/"$aur_source".git
@@ -142,7 +143,7 @@ clone_aur_repo() {
 
 set_proxy() {
     options=("https://fastgit.cc/" "https://mirror.ghproxy.com/（备用，下载速度较慢）" "https://gh.api.99988866.xyz/（备用2,不稳定）" "不使用Github代理（不推荐）")
-    sudo /tmp/yay-plus/dialog --title "请选择代理地址" 0 0 0 $(options[@]) --output-fd 1
+    sudo /usr/bin/dialog --title "请选择代理地址" 0 0 0 $(options[@]) --output-fd 1
     choice=$?
     case $choice in
         "https://fastgit.cc/")
@@ -154,7 +155,7 @@ set_proxy() {
             sed -i 's/https:\/\/raw.githubusercontent.com\//https:\/\/mirror.ghproxy.com\/https:\/\/raw.githubusercontent.com\//g' PKGBUILD
             ;;
         "https://gh.api.99988866.xyz/（备用2,不稳定）")
-            sed -i 's/https:\/\/raw.githubusercontent.com\//https:\/\/gh.api.99988866.xyz\/https:\/\/raw.githubusercontent.com\//g' PKGBUILD
+            sed -i 's/https:\/\/github.com\//https:\/\/gh.api.99988866.xyz\/https:\/\/github.com\//g' PKGBUILD
             sed -i 's/https:\/\/raw.githubusercontent.com\//https:\/\/gh.api.99988866.xyz\/https:\/\/raw.githubusercontent.com\//g' PKGBUILD
             ;;
         "不使用Github代理")
