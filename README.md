@@ -15,3 +15,6 @@ cd AUR_Quick_Downloader_for_Chinese
 chmod +x aur.sh
 ./aur.sh
 ```
+## 注意事项
+1. 本脚本仅适用于Arch Linux及其发行版系统，其他系统无法正常运行（废话）。
+2. 本脚本也可以去Release下载。
