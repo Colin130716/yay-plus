@@ -43,7 +43,7 @@ upgrade_or_install_aur_package() {
     esac
 }
 
-update_aur_package() {
+update_aur_packages() {
     cd "$1"
     set_env
     set_proxy
@@ -105,7 +105,8 @@ set_env() {
     echo "需要使用npm代理吗？(y/n)"
     read set_npm_proxy
     if [ "$set_npm_proxy" == "y" ]; then
-    npm config set registry https://registry.npmmirror.com
+        npm config set registry https://registry.npmmirror.com/
+    fi
 }
 
 download_dialog() {
@@ -124,14 +125,12 @@ download_dialog() {
 clone_aur_repo() {
     aur_source=$(dialog --inputbox "请输入你想要下载项目的aur名称：" 0 0 --output-fd 1)
     cd /tmp/yay-plus
-    if [ -d "$aur_source" ]; then
     sudo rm -rf "$aur_source"
     git clone https://aur.archlinux.org/"$aur_source".git
     cd "$aur_source"
 }
 
 set_proxy() {
-
     options=("https://fastgit.cc/" "https://mirror.ghproxy.com/（备用，下载速度较慢）" "https://gh.api.99988866.xyz/（备用2,不稳定）" "不使用Github代理（不推荐）")
     choice=$(dialog --title "请选择代理地址" 0 0 0 $(options[@]) --output-fd 1)
     case $choice in
@@ -155,7 +154,6 @@ set_proxy() {
 build_package() {
     makepkg -si
     exit_status=$?
-
     if [ $exit_status -ne 0 ]; then
         echo "makepkg出现错误 $exit_status ，该AUR包可能是过时的，或者您的网络不通畅"
         read -p "是否要继续安装其他AUR包？(y/n)" continue
@@ -163,6 +161,7 @@ build_package() {
             upgrade_or_install_aur_package
         else
             exit $exit_status
+        fi
     else
         echo "makepkg 成功完成"
         sleep 1
