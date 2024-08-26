@@ -106,6 +106,7 @@ clone_aur_repo() {
 }
 
 set_proxy() {
+    
     options=("https://fastgit.cc/" "https://mirror.ghproxy.com/（备用，下载速度较慢）" "https://gh.api.99988866.xyz/（备用2,不稳定）" "不使用Github代理（不推荐）")
     choice=$(dialog --title "请选择代理地址" 0 0 0 $(options[@]) --output-fd 1)
     case $choice in
