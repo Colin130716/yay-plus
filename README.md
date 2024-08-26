@@ -12,8 +12,8 @@
 ```shell
 git clone https://github.com/Colin130716/AUR_Quick_Downloader_for_Chinese.git
 cd AUR_Quick_Downloader_for_Chinese
-chmod +x aur.sh
-./aur.sh
+chmod +x yay-plus.sh
+./yay-plus.sh
 ```
 ## 注意事项
 1. 本脚本仅适用于Arch Linux及其发行版系统，其他系统无法正常运行（废话）。
