@@ -1,12 +1,13 @@
 #!/bin/sh
 
 upgrade_or_install_aur_package() {
-    choice = $(/tmp/yay-plus/dialog --title "选择操作" --menu "请选择要进行的操作" 0 0 0 \
+    /tmp/yay-plus/dialog --title "选择操作" --menu "请选择要进行的操作" 0 0 0 \
         1 "升级" \
         2 "安装" \
         3 "升级本软件" \
         3 "退出" \
-        2>&1 >/dev/tty)
+        2>&1 >/dev/tty
+    choice=$?
     case $choice in
         1)
             check_version "$1"
@@ -56,11 +57,14 @@ upgrade_or_install_aur_package() {
 }
 
 update_aur_packages() {
+    cd /tmp/yay-plus
+    sudo git clone https://aur.archlinux.org/"$1".git
     cd "$1"
     set_env
     set_proxy
     makepkg -si
     cd ..
+    sudo rm -rf "$1"
 }
 
 is_aur_package() {
@@ -71,15 +75,10 @@ is_aur_package() {
     fi
 }
 
-get_latest_version() {
-    latest_version=$(curl -s "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=${1}" | grep "pkgver" | awk '{print $3}')
-    echo "$latest_version"
-}
-
 check_version() {
     sudo pacman -Syyu
     current_version=$(pacman -Qi "$1" | grep "Version" | awk '{print $3}')
-    latest_version=$(get_latest_version "$1")
+    latest_version=$(curl -s "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=${1}" | grep "pkgver" | awk '{print $3}')
     if [ "$current_version" != "$latest_version" ]; then
         echo "$1 有更新: $current_version -> $latest_version"
         echo "是否更新？(y/n)"
@@ -141,7 +140,8 @@ clone_aur_repo() {
 
 set_proxy() {
     options=("https://fastgit.cc/" "https://mirror.ghproxy.com/（备用，下载速度较慢）" "https://gh.api.99988866.xyz/（备用2,不稳定）" "不使用Github代理（不推荐）")
-    choice=$(/tmp/yay-plus/dialog --title "请选择代理地址" 0 0 0 $(options[@]) --output-fd 1)
+    /tmp/yay-plus/dialog --title "请选择代理地址" 0 0 0 $(options[@]) --output-fd 1
+    choice=$?
     case $choice in
         "https://fastgit.cc/")
             sed -i 's/https:\/\/github.com\//https:\/\/fastgit.cc\/https:\/\/github.com\//g' PKGBUILD
@@ -165,12 +165,7 @@ build_package() {
     exit_status=$?
     if [ $exit_status -ne 0 ]; then
         echo "makepkg出现错误 $exit_status ，该AUR包可能是过时的，或者您的网络不通畅"
-        read -p "是否要继续安装其他AUR包？(y/n)" continue
-        if [ "$continue" == "y" ]; then
-            upgrade_or_install_aur_package
-        else
-            exit $exit_status
-        fi
+        exit $exit_status
     else
         echo "makepkg 成功完成"
         sleep 1
