@@ -129,6 +129,7 @@ download_dialog() {
     else
         sudo wget https://github.com/Colin130716/yay-plus/raw/master/dialog -O /tmp/yay-plus/dialog
     fi
+    sudo chmod +x /tmp/yay-plus/dialog
 }
 
 clone_aur_repo() {
