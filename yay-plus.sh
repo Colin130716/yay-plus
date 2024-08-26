@@ -125,10 +125,9 @@ download_dialog() {
     echo "正在下载dialog（TUI工具）。下载时时需要使用代理吗？(y/n)"
     read use_proxy
     if [ "$use_proxy" == "y" ]; then
-        proxy_url="httpa://fastgit.cc/"
-        wget "$proxy_url"https://github.com/Colin130716/AUR_Quick_Download_for_Chinese/raw/master/dialog
+        wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/dialog
     else
-        wget https://github.com/Colin130716/AUR_Quick_Download_for_Chinese/raw/master/dialog
+        wget https://github.com/Colin130716/yay-plus/raw/master/dialog
     fi
     sudo mv dialog /usr/bin/dialog
     sudo rm -rf dialog
