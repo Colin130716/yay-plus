@@ -16,6 +16,7 @@ upgrade_or_install_aur_package() {
             ;;
         3)
             wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/yay-plus.sh -o yay-plus1.sh
+            wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/verify.md5 -o verify.md5
             exit_status=$?
             if [ $exit_status -eq 0 ]; then
                 md5sum -c verify.md5
