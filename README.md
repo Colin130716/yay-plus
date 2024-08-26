@@ -10,8 +10,8 @@
 
 ## 使用示例
 ```shell
-git clone https://github.com/Colin130716/AUR_Quick_Downloader_for_Chinese.git
-cd AUR_Quick_Downloader_for_Chinese
+git clone https://github.com/Colin130716/yay-plus.git
+cd yay-plus
 chmod +x yay-plus.sh
 ./yay-plus.sh
 ```
@@ -19,4 +19,4 @@ chmod +x yay-plus.sh
 1. 本脚本仅适用于Arch Linux及其发行版系统，其他系统无法正常运行（废话）。
 2. 本脚本也可以去Release下载。（不建议，Release的脚本可能不是最新的）
 
-## 本软件使用CodeGeeX编写部分实现代码，感谢CodeGeeX！
+## 本软件使用CodeGeeX编写部分实现代码
