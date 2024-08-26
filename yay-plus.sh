@@ -125,9 +125,9 @@ download_dialog() {
     echo "正在下载dialog（TUI工具）。下载时需要使用代理吗？(y/n)"
     read use_proxy
     if [ "$use_proxy" == "y" ]; then
-        sudo wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/dialog -o /tmp/yay-plus/dialog
+        sudo wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/dialog -O /tmp/yay-plus/dialog
     else
-        sudo wget https://github.com/Colin130716/yay-plus/raw/master/dialog -o /tmp/yay-plus/dialog
+        sudo wget https://github.com/Colin130716/yay-plus/raw/master/dialog -O /tmp/yay-plus/dialog
     fi
 }
 
