@@ -1,7 +1,7 @@
 #!/bin/sh
 
 upgrade_or_install_aur_package() {
-    /tmp/yay-plus/dialog --title "选择操作" --menu "请选择要进行的操作" 0 0 0 \
+    sudo /tmp/yay-plus/dialog --title "选择操作" --menu "请选择要进行的操作" 0 0 0 \
         1 "升级" \
         2 "安装" \
         3 "升级本软件" \
@@ -132,7 +132,7 @@ download_dialog() {
 }
 
 clone_aur_repo() {
-    aur_source=$(/tmp/yay-plus/dialog --inputbox "请输入你想要下载项目的aur名称：" 0 0 --output-fd 1)
+    aur_source=$(sudo /tmp/yay-plus/dialog --inputbox "请输入你想要下载项目的aur名称：" 0 0 --output-fd 1)
     cd /tmp/yay-plus
     sudo rm -rf "$aur_source"
     git clone https://aur.archlinux.org/"$aur_source".git
@@ -141,7 +141,7 @@ clone_aur_repo() {
 
 set_proxy() {
     options=("https://fastgit.cc/" "https://mirror.ghproxy.com/（备用，下载速度较慢）" "https://gh.api.99988866.xyz/（备用2,不稳定）" "不使用Github代理（不推荐）")
-    /tmp/yay-plus/dialog --title "请选择代理地址" 0 0 0 $(options[@]) --output-fd 1
+    sudo /tmp/yay-plus/dialog --title "请选择代理地址" 0 0 0 $(options[@]) --output-fd 1
     choice=$?
     case $choice in
         "https://fastgit.cc/")
