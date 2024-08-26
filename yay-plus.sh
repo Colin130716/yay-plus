@@ -4,6 +4,7 @@ upgrade_or_install_aur_package() {
     choice = $(dialog --title "选择操作" --menu "请选择要进行的操作" 0 0 0 \
         1 "升级" \
         2 "安装" \
+        3 "升级本软件" \
         3 "退出" \
         2>&1 >/dev/tty)
     case $choice in
@@ -14,8 +15,7 @@ upgrade_or_install_aur_package() {
             install_aur_package
             ;;
         3)
-            exit 0
-            ;;
+            wget https://fastgit.cc/
     esac
 }
 
@@ -99,14 +99,15 @@ download_dialog() {
 
 clone_aur_repo() {
     aur_source=$(dialog --inputbox "请输入你想要下载项目的aur名称：" 0 0 --output-fd 1)
-    cd ~/Gitdir
+    cd /tmp/yay-plus
+    if [ -d "$aur_source" ]; then
     sudo rm -rf "$aur_source"
     git clone https://aur.archlinux.org/"$aur_source".git
     cd "$aur_source"
 }
 
 set_proxy() {
-    
+
     options=("https://fastgit.cc/" "https://mirror.ghproxy.com/（备用，下载速度较慢）" "https://gh.api.99988866.xyz/（备用2,不稳定）" "不使用Github代理（不推荐）")
     choice=$(dialog --title "请选择代理地址" 0 0 0 $(options[@]) --output-fd 1)
     case $choice in
@@ -130,7 +131,11 @@ build_package() {
 
     if [ $exit_status -ne 0 ]; then
         echo "makepkg出现错误 $exit_status ，该AUR包可能是过时的，或者您的网络不通畅"
-        exit $exit_status
+        read -p "是否要继续安装其他AUR包？(y/n)" continue
+        if [ "$continue" == "y" ]; then
+            upgrade_or_install_aur_package
+        else
+            exit $exit_status
     else
         echo "makepkg 成功完成"
         sleep 1
@@ -139,7 +144,6 @@ build_package() {
 }
 
 sudo mkdir /tmp/yay-plus
-cd /tmp/yay-plus
 sudo pacman -Syyu --noconfirm
 install_packages
 download_dialog
