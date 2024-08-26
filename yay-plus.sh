@@ -85,7 +85,7 @@ set_env() {
 }
 
 download_dialog() {
-    echo "下载dialog（TUI工具）时需要使用代理吗？(y/n)"
+    echo "正在下载dialog（TUI工具）。下载时时需要使用代理吗？(y/n)"
     read use_proxy
     if [ "$use_proxy" == "y" ]; then
         proxy_url="httpa://fastgit.cc/"
@@ -125,6 +125,16 @@ set_proxy() {
 
 build_package() {
     makepkg -si
+    exit_status=$?
+
+    if [ $exit_status -ne 0 ]; then
+        echo "makepkg出现错误 $exit_status ，该AUR包可能是过时的，或者您的网络不通畅"
+        exit $exit_status
+    else
+        echo "makepkg 成功完成"
+        sleep 1
+        upgrade_or_install_aur_package
+    fi
 }
 
 sudo mkdir /tmp/yay-plus
