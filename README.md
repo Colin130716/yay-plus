@@ -1,4 +1,4 @@
-# AUR_Quick_Download_for_Chinese
+# yay-plus
 
 ## 简介
 这是一个用于快速下载AUR软件包的脚本，使用Shell编写，基于AUR官方git clone的url。
