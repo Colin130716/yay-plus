@@ -1,8 +1,64 @@
 #!/bin/sh
 
-install_package() {
+upgrade_or_install_aur_package() {
+    choice = $(dialog --title "选择操作" --menu "请选择要进行的操作" 0 0 0 \
+        1 "升级" \
+        2 "安装" \
+        3 "退出" \
+        2>&1 >/dev/tty)
+    case $choice in
+        1)
+            check_version "$1"
+            ;;
+        2)
+            install_aur_package
+            ;;
+        3)
+            exit 0
+            ;;
+    esac
+}
+
+update_aur_package() {
+    cd "$1"
+    set_env
+    set_proxy
+    makepkg -si
+    cd ..
+}
+
+is_aur_package() {
+    if [[ $(pacman -Qi | grep "$1" | grep "AUR") ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+get_latest_version() {
+    latest_version=$(curl -s "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=${1}" | grep "pkgver" | awk '{print $3}')
+    echo "$latest_version"
+}
+
+check_version() {
     sudo pacman -Syyu
-    sudo pacman -S --noconfirm "$1"
+    current_version=$(pacman -Qi "$1" | grep "Version" | awk '{print $3}')
+    latest_version=$(get_latest_version "$1")
+    if [ "$current_version" != "$latest_version" ]; then
+        echo "$1 有更新: $current_version -> $latest_version"
+        echo "是否更新？(y/n)"
+        read update
+        if [ "$update" == "y" ]; then
+            update_aur_package "$1"
+        fi
+    else
+        echo "$1 是最新版本"
+    fi
+}
+
+
+install_package() {
+    sudo pacman -S --needed --noconfirm "$1"
 }
 
 install_packages() {
@@ -12,6 +68,7 @@ install_packages() {
     install_package unzip
     install_package npm
     install_package go
+    install_package curl
 }
 
 set_env() {
@@ -70,9 +127,9 @@ build_package() {
     makepkg -si
 }
 
+sudo mkdir /tmp/yay-plus
+cd /tmp/yay-plus
+sudo pacman -Syyu --noconfirm
 install_packages
-set_env
 download_dialog
-clone_aur_repo
-set_proxy
-build_package
+upgrade_or_install_aur_package
