@@ -140,8 +140,10 @@ set_proxy() {
             ;;
         "https://mirror.ghproxy.com/（备用，下载速度较慢）")
             sed -i 's/https:\/\/github.com\//https:\/\/mirror.ghproxy.com\/https:\/\/github.com\//g' PKGBUILD
+            sed -i 's/https:\/\/raw.githubusercontent.com\//https:\/\/mirror.ghproxy.com\/https:\/\/raw.githubusercontent.com\//g' PKGBUILD
             ;;
         "https://gh.api.99988866.xyz/（备用2,不稳定）")
+            sed -i 's/https:\/\/raw.githubusercontent.com\//https:\/\/gh.api.99988866.xyz\/https:\/\/raw.githubusercontent.com\//g' PKGBUILD
             sed -i 's/https:\/\/raw.githubusercontent.com\//https:\/\/gh.api.99988866.xyz\/https:\/\/raw.githubusercontent.com\//g' PKGBUILD
             ;;
         "不使用Github代理")
