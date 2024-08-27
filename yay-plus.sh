@@ -48,6 +48,7 @@ upgrade_or_install_aur_package() {
             fi
             chmod +x yay-plus1.sh
             echo "升级成功，重新运行中"
+            rm -f verify.md5
             mv yay-plus1.sh yay-plus.sh
             sudo ./yay-plus.sh
             ;;
