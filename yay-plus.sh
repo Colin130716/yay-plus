@@ -15,6 +15,7 @@ upgrade_or_install_aur_package() {
             echo "算了，既然你已经选择了，给你看个东西吧。我先溜了（by qwq9scan114514）"
             sleep 5
             echo "https://github.com/qwq9scan114514/yay-s-joke"
+            sleep 5
             echo "来听首歌吧"
             sudo wget https://fastgit.cc/https://github.com/qwq9scan114514/yay-s-joke/raw/master/3.aac -O /tmp/yay-plus/3.aac
             sudo mpv --no-video /tmp/yay-plus/3.aac
