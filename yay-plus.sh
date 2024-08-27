@@ -1,13 +1,13 @@
 #!/bin/sh
 
 upgrade_or_install_aur_package() {
-    sudo /usr/bin/dialog --title "选择操作" --menu "请选择要进行的操作" 0 0 0 \
-        1 "升级" \
-        2 "安装" \
-        3 "升级本软件" \
-        3 "退出" \
-        2>&1 >/dev/tty
-    choice=$?
+    echo "
+    1. 检查全部AUR包的更新
+    2. 安装AUR包
+    3. 升级此脚本
+    4. 退出
+    "
+    read -p "请输入选项: " choice
     case $choice in
         1)
             check_version "$1"
@@ -121,18 +121,6 @@ set_env() {
     fi
 }
 
-download_dialog() {
-    echo "正在下载dialog（TUI工具）。下载时需要使用代理吗？(y/n)"
-    read use_proxy
-    if [ "$use_proxy" == "y" ]; then
-        sudo wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/data.tar.xz -O /data.tar.xz
-    else
-        sudo wget https://github.com/Colin130716/yay-plus/raw/master/data.tar.xz -O /data.tar.xz
-    fi
-    sudo tar -xf /data.tar.xz
-    sudo rm /data.tar.xz
-}
-
 clone_aur_repo() {
     aur_source=$(sudo /usr/bin/dialog --inputbox "请输入你想要下载项目的aur名称：" 0 0 --output-fd 1)
     cd /tmp/yay-plus
@@ -142,23 +130,20 @@ clone_aur_repo() {
 }
 
 set_proxy() {
-    options=("https://fastgit.cc/" "https://mirror.ghproxy.com/（备用，下载速度较慢）" "https://gh.api.99988866.xyz/（备用2,不稳定）" "不使用Github代理（不推荐）")
-    sudo /usr/bin/dialog --title "请选择代理地址" 0 0 0 $(options[@]) --output-fd 1
-    choice=$?
-    case $choice in
-        "https://fastgit.cc/")
-            sed -i 's/https:\/\/github.com\//https:\/\/fastgit.cc\/https:\/\/github.com\//g' PKGBUILD
-            sed -i 's/https:\/\/raw.githubusercontent.com\//https:\/\/fastgit.cc\/https:\/\/raw.githubusercontent.com\//g' PKGBUILD
+    echo 请问您需要哪个代理？1："https://fastgit.cc/ 2：https://mirror.ghproxy.com/（备用，下载速度较慢） 3：https://gh.api.99988866.xyz/（备用2,不稳定） 4：不使用Github代理（不推荐）"
+    read proxy
+    case $proxy in
+        1)
+            sed -i 's#https://github.com/#https://fastgit.cc/https://github.com/#g' PKGBUILD
+            sed -i 's#https://raw.githubusercontent.com/#https://fastgit.cc/https://raw.githubusercontent.com/#g' PKGBUILD
             ;;
-        "https://mirror.ghproxy.com/（备用，下载速度较慢）")
-            sed -i 's/https:\/\/github.com\//https:\/\/mirror.ghproxy.com\/https:\/\/github.com\//g' PKGBUILD
-            sed -i 's/https:\/\/raw.githubusercontent.com\//https:\/\/mirror.ghproxy.com\/https:\/\/raw.githubusercontent.com\//g' PKGBUILD
+        2)
+            sed -i 's#https://github.com/#https://mirror.ghproxy.com/https://github.com/#g' PKGBUILD
+            sed -i 's#https://raw.githubusercontent.com/#https://mirror.ghproxy.com/https://raw.githubusercontent.com/#g' PKGBUILD
             ;;
-        "https://gh.api.99988866.xyz/（备用2,不稳定）")
-            sed -i 's/https:\/\/github.com\//https:\/\/gh.api.99988866.xyz\/https:\/\/github.com\//g' PKGBUILD
-            sed -i 's/https:\/\/raw.githubusercontent.com\//https:\/\/gh.api.99988866.xyz\/https:\/\/raw.githubusercontent.com\//g' PKGBUILD
-            ;;
-        "不使用Github代理")
+        3)
+            sed -i 's#https://github.com/#https://gh.api.99988866.xyz/https://github.com/#g' PKGBUILD
+            sed -i 's#https://raw.githubusercontent.com/#https://gh.api.99988866.xyz/https://raw.githubusercontent.com/#g' PKGBUILD
             ;;
     esac
 }
