@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 upgrade_or_install_aur_package() {
     echo "
@@ -17,8 +17,8 @@ upgrade_or_install_aur_package() {
             echo "https://github.com/qwq9scan114514/yay-s-joke"
             sleep 5
             echo "来听首歌吧"
-            sudo wget https://fastgit.cc/https://github.com/qwq9scan114514/yay-s-joke/raw/master/3.aac -O /tmp/yay-plus/3.aac
-            sudo mpv --no-video /tmp/yay-plus/3.aac
+            sudo wget https://fastgit.cc/https://github.com/qwq9scan114514/yay-s-joke/raw/main/3.aac -O /tmp/yay-plus/3.aac
+            mpv --no-video /tmp/yay-plus/3.aac
             sudo rm -f /tmp/yay-plus/3.aac
             exit 114514
             ;;
