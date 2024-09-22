@@ -124,5 +124,4 @@ build_package() {
 sudo mkdir /tmp/yay-plus
 sudo pacman -Syyu --noconfirm
 install_packages
-download_dialog  # 虽然有“亿”点bug,但又不是不能用（
 upgrade_or_install_aur_package
