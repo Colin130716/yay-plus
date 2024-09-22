@@ -88,7 +88,7 @@ clone_aur_repo() {
 }
 
 set_proxy() {
-    echo 请问您需要哪个代理？1："https://fastgit.cc/ 2：https://mirror.ghproxy.com/（备用，下载速度较慢） 3：https://gh.api.99988866.xyz/（备用2,不稳定） 4：不使用Github代理（不推荐）"
+    echo "请问您需要哪个代理？1：https://fastgit.cc/ 2：https://mirror.ghproxy.com/（备用，下载速度较慢） 3：https://gh.api.99988866.xyz/（备用2,不稳定） 4：不使用Github代理（不推荐）"
     read proxy
     case $proxy in
         1)
