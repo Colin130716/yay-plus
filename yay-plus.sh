@@ -53,38 +53,12 @@ set_env() {
 
 clone_aur_repo() {
     read -p "请输入软件包名称：" aur_source
-    echo "搜索pacman中..."
-    pacman -Q | grep -i "$aur_source" >/dev/null 2>&1 && pm=1 || pm=0
-    echo "搜索AUR中..."
-    cd /tmp/yay-plus
-    sudo curl -s https://aur.archlinux.org/packages/ | grep -i "$aur_source" >/dev/null 2>&1 && aur=1 || aur=0
-    if [$pm -eq 1] && [$aur -eq 1]; then
-        echo "请选择安装方式：1：pacman 2：AUR"
-        read install_method
-        case $install_method in
-            1)
-                install_package $aur_source
-                ;;
-            2)
-                sudo rm -rf ./$aur_source
-                sudo git clone https://aur.archlinux.org/"$aur_source".git
-                cd $aur_source
-                set_env
-                set_proxy
-                ;;
-        esac
-    elif [$pm -eq 1] && [$aur -eq 0]; then
-        install_package $aur_source
-    elif [$pm -eq 0] && [$aur -eq 1]; then
-        sudo rm -rf "$aur_source"
-        sudo git clone https://aur.archlinux.org/"$aur_source".git
-        cd "$aur_source"
-        set_env
-        set_proxy
-        sudo makepkg -si --noconfirm
-    else
-        echo "未找到该软件包"
-    fi
+    sudo rm -rf "$aur_source"
+    sudo git clone https://aur.archlinux.org/"$aur_source".git
+    cd "$aur_source"
+    set_env
+    set_proxy
+    sudo makepkg -si --noconfirm
 }
 
 set_proxy() {
