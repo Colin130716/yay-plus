@@ -2,67 +2,15 @@
 
 upgrade_or_install_aur_package() {
     echo "
-    1. 检查全部AUR包的更新（暂未开发）
-    2. 安装AUR包
-    3. 升级此脚本
-    4. 退出
+    1. 安装AUR包
+    2. 退出
     "
     read -p "请输入选项: " choice
     case $choice in
         1)
-            echo "都说了没开发，你为什么还要选择它呢？"
-            sleep 10
-            echo "算了，既然你已经选择了，给你看个东西吧。我先溜了（by qwq9scan114514）"
-            sleep 5
-            echo "https://github.com/qwq9scan114514/yay-s-joke"
-            sleep 5
-            echo "来听首歌吧"
-            sudo wget https://fastgit.cc/https://github.com/qwq9scan114514/yay-s-joke/raw/main/3.aac -O /tmp/yay-plus/3.aac
-            mpv --no-video /tmp/yay-plus/3.aac
-            sudo rm -f /tmp/yay-plus/3.aac
-            exit 114514
-            ;;
-        2)
             clone_aur_repo
             ;;
-        3)
-            cd /tmp/yay-plus
-            echo "是否使用代理 (y/n)"
-            read -p "请输入选项: " choice
-            case $choice in
-                y)
-                    sudo wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/yay-plus.sh -o yay-plus1.sh
-                    exit_status=$?
-                    sudo wget https://fastgit.cc/https://github.com/Colin130716/yay-plus/raw/master/verify.md5 -o verify.md5
-
-                    ;;
-                n)
-                    sudo wget https://github.com/Colin130716/yay-plus/raw/master/yay-plus.sh -o yay-plus1.sh
-                    exit_status=$?
-                    sudo wget https://github.com/Colin130716/yay-plus/raw/master/verify.md5 -o verify.md5
-                    ;;
-            esac
-            if [ $exit_status -eq 0 ]; then
-                sudo md5sum -c verify.md5
-                if [ $? -eq 0 ]; then
-                    echo "下载成功"
-                else
-                    echo "MD5校验失败，请检查网络连接，或更改DNS"
-                    sleep 3
-                    upgrade_or_install_aur_package
-                fi
-            else
-                echo "下载失败，请检查网络连接"
-                sleep 3
-                upgrade_or_install_aur_package
-            fi
-            sudo chmod +x yay-plus1.sh
-            sudo echo "升级成功，重新运行中"
-            sudo rm -f verify.md5
-            sudo mv yay-plus1.sh yay-plus.sh
-            sudo ./yay-plus.sh
-            ;;
-        4)
+        2)
             exit 0
             ;;
     esac
@@ -104,7 +52,7 @@ set_env() {
 }
 
 clone_aur_repo() {
-    aur_source=$(sudo /usr/bin/dialog --inputbox "请输入你想要下载项目的名称：" 0 0 --output-fd 1 --clear)
+    read -p "请输入软件包名称：" aur_source
     echo "搜索pacman中..."
     pacman -Q | grep -i "$aur_source" >/dev/null 2>&1 && pm=1 || pm=0
     echo "搜索AUR中..."
