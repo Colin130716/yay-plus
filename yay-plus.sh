@@ -58,7 +58,7 @@ clone_aur_repo() {
     cd "$aur_source"
     set_env
     set_proxy
-    sudo makepkg -si --noconfirm
+    build_package
 }
 
 set_proxy() {
