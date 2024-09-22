@@ -12,8 +12,8 @@
 ```shell
 git clone https://github.com/Colin130716/yay-plus.git
 cd yay-plus
-chmod +x yay-plus.sh
-./yay-plus.sh
+sudo sh ./install_depend.sh
+python yay-plus.py
 ```
 ## 注意事项
 1. 本脚本仅适用于Arch Linux及其发行版系统，其他系统无法正常运行（废话）。
