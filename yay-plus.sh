@@ -85,7 +85,7 @@ clone_aur_repo() {
     read -p "请输入软件包名称：" aur_source
     sudo rm -rf "$aur_source"
     echo "正在尝试pacman安装..."
-    echo -e "执行：\033[34m sudo pacman -S "$aur_source" \033[0m"
+    echo -e "执行：\033[34m  \033[0m"
     sudo pacman -S "$aur_source"
     if [ $? -eq 0 ]; then
         clear
