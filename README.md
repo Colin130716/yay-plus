@@ -21,4 +21,9 @@ asSK：废物一个，sb一个（有点过了），你永远也想不到他下�
 ## 初衷
 这个东西制作的初衷是我有个朋友，给小白推荐arch，那个小白还真装了，然后这都不会那都不会，以至于flatpak，hmcl，jdk，qq，fcitx5都是我们帮他装的，我们实在不希望他不会合理运用aur这个好用的东西，所以我决定写这个脚本。
 
+## 友链
+[**展示我们对yay+这个项目的逆天发言的图片合集**](https://github.com/qwq9scan114514/yay-s-joke)
+
 ![FuckNvidia](https://raw.githubusercontent.com/Colin130716/yay-plus/master/E868CDC19CF3CB67081991631F2DA957.png)
+
+**实际上这篇README大部分是asSK帮忙写的**
