@@ -85,7 +85,7 @@ clone_aur_repo() {
     read -p "请输入软件包名称：" aur_source
     sudo rm -rf "$aur_source"
     echo "正在尝试pacman安装..."
-    echo -e "执行：\033[34m  \033[0m"
+    echo -e "执行：\033[34m sudo pacman -S "$aur_source" \033[0m"
     sudo pacman -S "$aur_source"
     if [ $? -eq 0 ]; then
         clear
@@ -191,6 +191,8 @@ start_yay_plus() {
 warn() {
     echo -e "\033[41;37m WARNING \033[0m"
     echo -e "  必须要用\033[31m Arch \033[0m系的系统，别拿着个\033[33m Ubuntu \033[0m跑过来用这个脚本，到时候出问题又来找我，我直接给你挂 https://github.com/qwq9scan114514/yay-s-joke/ 里"
+    sleep 2
+
     pacman -h
     if [ $? -eq 0 ]; then
         echo "检测到您是Arch系用户，正在执行下面的步骤"
