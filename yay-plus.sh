@@ -1,5 +1,4 @@
 #!/bin/bash
-# 吊爆的AUR安装工具
 
 upgrade_or_install_aur_package() {
 	cd /tmp/yay-plus
