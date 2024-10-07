@@ -70,4 +70,11 @@ FlySkyPigg-az：那位小白，仓库吉祥物（？
 
 **2024/10/7 4:17 大事祭写完（暂时的）**
 
+**2024/10/7 23:43 翻到了以前的aur.sh**
+
+---
+
+**以前的aur.sh最后一版代码“欣赏”**
+[![aur.sh](https://img.z4a.net/images/2024/10/07/image3fc43b1fbfae71ab.md.png)](https://img.z4a.net/image/image.MxH8s)
+
 ---
