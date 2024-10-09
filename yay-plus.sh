@@ -262,6 +262,7 @@ build_package() {
         exit 2
     else
         clear
+        now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] makepkg 阶段完成" >> ~/.yay-plus/logs/$create_log_time.log
         echo "makepkg 成功完成"
         sleep 1
