@@ -258,7 +258,7 @@ build_package() {
     exit_status=$?
     if [ $exit_status -ne 0 ]; then
         echo "makepkg 返回值 $exit_status，软件退出，返回值2" >> ~/.yay-plus/logs/$create_log_time.log
-        echo "makepkg出现错误 $exit_status ，详细信息请查看~/.yay-plus/logs/$create_log_time.log"
+        echo "makepkg出现错误 $exit_status ，详细信息请查看~/.yay-plus/logs/$create_log_time.log，如果不会看日志，可以去 https://github.com/Colin130716/yay-plus/issues 提交issue"
         exit 2
     else
         clear
