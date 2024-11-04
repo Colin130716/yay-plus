@@ -103,18 +103,34 @@ install_packages() {
     install_package flatpak
 
     now_time=$(date +'%Y/%m/%d %H:%M:%S')
-    echo "[$now_time] 为flatpak添加flathub上交大源" >> ~/.yay-plus/logs/$create_log_time.log
+    echo "[$now_time] 为flatpak添加flathub官方源" >> ~/.yay-plus/logs/$create_log_time.log
     echo -e "\033[34m 执行：sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo \033[0m"
     sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-    echo -e "\033[34m 执行：wget https://mirror.sjtu.edu.cn/flathub/flathub.gpg \033[0m"
-    wget https://mirror.sjtu.edu.cn/flathub/flathub.gpg
-    echo -e "\033[34m 执行：sudo flatpak remote-modify flathub --gpg-import flathub.gpg \033[0m"
-    sudo flatpak remote-modify flathub --gpg-import flathub.gpg
-    echo -e "\033[34m 执行：rm flathub.gpg \033[0m"
-    rm flathub.gpg
-    echo -e "\033[34m 执行：sudo flatpak remote-modify flathub --url=https://mirror.sjtu.edu.cn/flathub \033[0m"
-    sudo flatpak remote-modify flathub --url=https://mirror.sjtu.edu.cn/flathub
-    sudo flatpak update
+    echo "是否要更换flathub源为上交大源？(Y/n)"
+    select use_mirror in "y" "Y" "n" "N"; do
+        case $use_mirror in
+        y | Y)
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 为flatpak更换flathub源为上交大源" >> ~/.yay-plus/logs/$create_log_time.log
+            echo -e "\033[34m 执行：wget https://mirror.sjtu.edu.cn/flathub/flathub.gpg \033[0m"
+            wget https://mirror.sjtu.edu.cn/flathub/flathub.gpg
+            echo -e "\033[34m 执行：sudo flatpak remote-modify flathub --gpg-import flathub.gpg \033[0m"
+            sudo flatpak remote-modify flathub --gpg-import flathub.gpg
+            echo -e "\033[34m 执行：rm flathub.gpg \033[0m"
+            rm flathub.gpg
+            echo -e "\033[34m 执行：sudo flatpak remote-modify flathub --url=https://mirror.sjtu.edu.cn/flathub \033[0m"
+            sudo flatpak remote-modify flathub --url=https://mirror.sjtu.edu.cn/flathub
+            sudo flatpak update
+            break
+            ;;
+        n | N)
+            break
+            ;;
+        *)
+            echo "请输入正确的选项"
+            ;;
+        esac
+    done
 }
 
 # 定义一个函数，用于卸载软件包
