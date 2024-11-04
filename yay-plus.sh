@@ -1,39 +1,51 @@
 #!/bin/bash
 
+# 定义一个函数，用于升级或安装AUR软件包
 upgrade_or_install_aur_package() {
 	cd ~/.yay-plus/packages
 	echo YAY+ | figlet | lolcat
-    echo Final | figlet | lolcat
-    echo Version | figlet | lolcat
+    echo Version 3 | figlet | lolcat
 	echo "
     1. 安装软件包
     2. 卸载软件包
-    3. 退出
+    3. 运行flatpak软件包
+    4. 退出
     "
-    read -p "请输入选项: " choice
+    select choice in 1 2 3 4; do
     now_time=$(date +'%Y/%m/%d %H:%M:%S')
     echo "[$now_time] 首页选择：$choice" >> ~/.yay-plus/logs/$create_log_time.log
     case $choice in
         1)
-            clone_aur_repo
+            choose_install_method
             ;;
         2)
             uninstall_package
             ;;
         3)
+            run_flatpak_package
+            ;;
+        4)
             clear
             now_time=$(date +'%Y/%m/%d %H:%M:%S')
             echo "[$now_time] 软件退出，返回值0" >> ~/.yay-plus/logs/$create_log_time.log
             echo "yay+正在退出，感谢使用，Shell版不再更新，可以去我的代码仓库下载PyQt版"
             exit 0
             ;;
+        *)
+            clear
+            echo "无效的选项，请重新输入"
+            upgrade_or_install_aur_package
+            ;;
     esac
+    done
 }
 
+# 定义一个函数，用于安装软件包
 install_package() {
     sudo pacman -S --needed --noconfirm "$1"
 }
 
+# 定义一个函数，用于安装多个软件包
 install_packages() {
     now_time=$(date +'%Y/%m/%d %H:%M:%S')
     echo "[$now_time] 使用 sudo pacman -S --needed --noconfirm 安装 git" >> ~/.yay-plus/logs/$create_log_time.log
@@ -84,30 +96,76 @@ install_packages() {
     echo "[$now_time] 使用 sudo pacman -S --needed --noconfirm 安装 vim" >> ~/.yay-plus/logs/$create_log_time.log
     echo -e "安装软件包：\033[34m vim \033[0m"
     install_package vim
-}
 
-uninstall_package() {
-    read -p "请输入软件包名称（使用 pacman 安装的所有软件包都可以，包括 makepkg 使用的也是 pacman 来安装，支持多个软件包同时卸载，用空格隔开）：" uninstall_package_name
     now_time=$(date +'%Y/%m/%d %H:%M:%S')
-    echo "[$now_time] 使用 sudo pacman -Rsn --noconfirm 卸载 $uninstall_package_name" >> ~/.yay-plus/logs/$create_log_time.log
-    echo -e "卸载软件包：\033[34m $uninstall_package_name \033[0m"
-    sudo pacman -Rsn --noconfirm $uninstall_package_name
-    if [ $? -eq 0 ]; then
-        clear
-        now_time=$(date +'%Y/%m/%d %H:%M:%S')
-        echo "[$now_time] 卸载完成" >> ~/.yay-plus/logs/$create_log_time.log
-        echo "卸载成功"
-        upgrade_or_install_aur_package
-    else
-        now_time=$(date +'%Y/%m/%d %H:%M:%S')
-        echo "[$now_time] 卸载失败" >> ~/.yay-plus/logs/$create_log_time.log
-        echo "卸载失败，请查看命令输出"
-        exit 4
-    fi
+    echo "[$now_time] 使用 sudo pacman -S --needed --noconfirm 安装 flatpak" >> ~/.yay-plus/logs/$create_log_time.log
+    echo -e "安装软件包：\033[34m flatpak \033[0m"
+    install_package flatpak
+
+    now_time=$(date +'%Y/%m/%d %H:%M:%S')
+    echo "[$now_time] 为flatpak添加flathub上交大源" >> ~/.yay-plus/logs/$create_log_time.log
+    echo -e "\033[34m 执行：sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo \033[0m"
+    sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+    echo -e "\033[34m 执行：wget https://mirror.sjtu.edu.cn/flathub/flathub.gpg \033[0m"
+    wget https://mirror.sjtu.edu.cn/flathub/flathub.gpg
+    echo -e "\033[34m 执行：sudo flatpak remote-modify flathub --gpg-import flathub.gpg \033[0m"
+    sudo flatpak remote-modify flathub --gpg-import flathub.gpg
+    echo -e "\033[34m 执行：rm flathub.gpg \033[0m"
+    rm flathub.gpg
+    echo -e "\033[34m 执行：sudo flatpak remote-modify flathub --url=https://mirror.sjtu.edu.cn/flathub \033[0m"
+    sudo flatpak remote-modify flathub --url=https://mirror.sjtu.edu.cn/flathub
+    sudo flatpak update
 }
 
+# 定义一个函数，用于卸载软件包
+uninstall_package() {
+    echo "
+    请选择卸载方式：
+    1. 卸载 pacman 安装的软件包
+    2. 卸载 flatpak(flathub) 安装的软件包
+    "
+    select uninstall_package_type in 1 2; do
+        case $uninstall_package_type in
+        1)
+            read -p "请输入软件包名称（使用 pacman 安装的所有软件包都可以，包括 makepkg 使用的也是 pacman 来安装，支持多个软件包同时卸载，用空格隔开）：" uninstall_package_name
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 使用 sudo pacman -Rsn --noconfirm 卸载 $uninstall_package_name" >> ~/.yay-plus/logs/$create_log_time.log
+            echo -e "卸载软件包：\033[34m $uninstall_package_name \033[0m"
+            sudo pacman -Rsn --noconfirm $uninstall_package_name
+            if [ $? -eq 0 ]; then
+                clear
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 卸载完成" >> ~/.yay-plus/logs/$create_log_time.log
+                echo "卸载成功"
+                upgrade_or_install_aur_package
+            else
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 卸载失败" >> ~/.yay-plus/logs/$create_log_time.log
+                echo "卸载失败，请去 ~/.yay-plus/logs/$create_log_time.log 查看日志"
+                exit 4
+            fi
+            ;;
+        2)
+            read -p "请输入软件包名称（使用 flatpak 安装的所有软件包都可以，支持多个软件包同时卸载，用空格隔开）：" uninstall_package_name
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 使用 flatpak uninstall $uninstall_package_name" >> ~/.yay-plus/logs/$create_log_time.log
+            echo -e "卸载flatpak软件包：\033[34m $uninstall_package_name \033[0m"
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 卸载完成" >> ~/.yay-plus/logs/$create_log_time.log
+            echo "卸载成功"
+            upgrade_or_install_aur_package
+            ;;
+        *)
+            echo "输入错误，请重新输入"
+            ;;
+        esac
+    done
+    
+}
+
+# 定义一个函数，用于设置代理
 set_env() {
-    echo "需要使用go代理吗？(y/N)"
+    echo "需要使用go代理下载吗？（代理下载地址：https://goproxy.cn）(y/N)"
     read set_go_proxy
     if [ "$set_go_proxy" == "y" ]; then
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
@@ -126,6 +184,24 @@ set_env() {
     else
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] go代理：否" >> ~/.yay-plus/logs/$create_log_time.log
+        echo "是否还原为默认代理下载地址？(Y/n)"
+        select set_go_proxy_default in y n Y N; do
+            if [ "$set_go_proxy_default" == "n" ]; then
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 还原go代理：否" >> ~/.yay-plus/logs/$create_log_time.log
+                break
+            elif [ "$set_go_proxy_default" == "N" ]; then
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 还原go代理：否" >> ~/.yay-plus/logs/$create_log_time.log
+                break
+            else
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 还原go代理：是 代理地址：https://proxy.golang.org" >> ~/.yay-plus/logs/$create_log_time.log
+                echo -e "执行：\033[34m export GOPROXY=https://proxy.golang.org \033[0m"
+                export GOPROXY=https://proxy.golang.org
+                break
+            fi
+        done
     fi
 
     echo "需要使用npm代理吗？(y/N)"
@@ -145,7 +221,26 @@ set_env() {
     else
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] npm代理：否" >> ~/.yay-plus/logs/$create_log_time.log
+        echo "是否还原为默认代理下载地址？(Y/n)"
+        select set_npm_proxy_default in y n Y N; do
+            if [ "$set_npm_proxy_default" == "n" ]; then
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 还原npm代理：否" >> ~/.yay-plus/logs/$create_log_time.log
+                break
+            elif [ "$set_npm_proxy_default" == "N" ]; then
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 还原npm代理：否" >> ~/.yay-plus/logs/$create_log_time.log
+                break
+            else
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 还原npm代理：是 代理地址：https://registry.npmjs.org" >> ~/.yay-plus/logs/$create_log_time.log
+                echo -e "执行：\033[34m npm config set registry https://registry.npmjs.org \033[0m"
+                npm config set registry https://registry.npmjs.org
+                break
+            fi
+        done
     fi
+
 	echo "是否要查看PKGBUILD内容？(y/N)"
 	read read_PKGBUILD
 	if [ "$read_PKGBUILD" == "y" ]; then
@@ -165,29 +260,86 @@ set_env() {
 	clear
 }
 
-clone_aur_repo() {
-    read -p "请输入软件包名称：" aur_source
-    rm -rf "$aur_source"
-    now_time=$(date +'%Y/%m/%d %H:%M:%S')
-    echo "[$now_time] 尝试使用 pacman 安装 $aur_source" >> ~/.yay-plus/logs/$create_log_time.log
-    echo "正在静默尝试pacman安装..."
-    echo -e "执行：\033[34m sudo pacman -S --noconfirm $aur_source \033[0m"
-    sudo pacman -S --noconfirm $aur_source >> ~/.yay-plus/logs/$create_log_time.log
-    if [ $? -eq 0 ]; then
+# 定义一个函数，用于选择安装方式
+choose_install_method() {
+    read -p "请输入软件包名称（如果要从flathub安装软件包，请填写完整包名，例如org.kde.kalk，不要只填一个kalk）：" aur_source
+    echo "请选择安装方式："
+    echo "1. 从pacman安装"
+    echo "2. 从AUR安装"
+    echo "3. 从flathub（flatpak）安装"
+    read install_method
+    sudo rm -rf $aur_source
+    if [ "$install_method" == "1" ]; then
         clear
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
-        echo "[$now_time] 使用 pacman 安装 $aur_source 成功" >> ~/.yay-plus/logs/$create_log_time.log
-        echo "pacman安装成功"
-        upgrade_or_install_aur_package
-    else
+        echo "[$now_time] 安装方式：从pacman安装" >> ~/.yay-plus/logs/$create_log_time.log
+        echo "正在静默尝试pacman安装..."
+        echo -e "执行：\033[34m sudo pacman -S --noconfirm $aur_source \033[0m"
+        sudo pacman -S --noconfirm $aur_source >> ~/.yay-plus/logs/$create_log_time.log
+        if [ $? -eq 0 ]; then
+            clear
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 使用 pacman 安装 $aur_source 成功" >> ~/.yay-plus/logs/$create_log_time.log
+            echo "pacman安装成功"
+            upgrade_or_install_aur_package
+        else
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 使用 pacman 安装 $aur_source 失败" >> ~/.yay-plus/logs/$create_log_time.log
+            echo "pacman安装失败，请检查网络连接，或您输入的是不存在的软件包"
+            echo "是否要尝试从AUR安装？(Y/n)"
+            read install_from_aur
+            if [ "$install_from_aur" == "N" ] || [ "$install_from_aur" == "n" ]; then
+                echo "是否要尝试使用flatpak安装？(Y/n)"
+                read install_from_flatpak
+                if [ "$install_from_flatpak" == "N" ] || [ "$install_from_flatpak" == "n" ]; then
+                    clear
+                    echo "用户取消安装，软件退出，返回值6" > ~/.yay-plus/logs/$create_log_time.log
+                    echo -e "\033[31m已取消安装，yay+正在退出，返回值6"
+                    exit 6
+                else
+                    clear
+                    now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                    echo "[$now_time] 安装方式：从AUR安装" >> ~/.yay-plus/logs/$create_log_time.log
+                    clear
+                    now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                    echo "[$now_time] 尝试从 AUR 安装" >> ~/.yay-plus/logs/$create_log_time.log
+                    echo "正在静默尝试从AUR安装..."
+                    now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                    echo "[$now_time] 开始 git clone" >> ~/.yay-plus/logs/$create_log_time.log
+                    sudo rm -rf "$aur_source"
+                    echo -e "执行：\033[34m git clone https://aur.archlinux.org/"$aur_source".git \033[0m"
+                    git clone https://aur.archlinux.org/"$aur_source".git >> ~/.yay-plus/logs/$create_log_time.log 2>&1
+                    find ./$aur_source -name "PKGBUILD" -exec found_aur_source = 1
+                    if [ $found_aur_source -eq 1 ]; then
+                        echo "查找到 $aur_source ，正在开始makepkg过程"
+                    else
+                        now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                        echo "[$now_time] 使用 git clone $aur_source 失败，软件退出，返回值1" >> ~/.yay-plus/logs/$create_log_time.log
+                        echo "git clone失败，请检查网络连接，或您输入的是不存在的软件包"
+                        exit 1
+                    fi
+                    cd "$aur_source"
+                    set_env
+                    set_proxy
+                    build_package
+                fi
+            else
+                exit 1
+            fi
+        fi
+    elif [ "$install_method" == "2" ]; then
         clear
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
-        echo "[$now_time] 使用 pacman 安装 $aur_source 失败，尝试使用 AUR 安装" >> ~/.yay-plus/logs/$create_log_time.log
-        echo "pacman安装失败，正在静默尝试AUR安装..."
+        echo "[$now_time] 安装方式：从AUR安装" >> ~/.yay-plus/logs/$create_log_time.log
+        clear
+        now_time=$(date +'%Y/%m/%d %H:%M:%S')
+        echo "[$now_time] 尝试从 AUR 安装" >> ~/.yay-plus/logs/$create_log_time.log
+        echo "正在静默尝试从AUR安装..."
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] 开始 git clone" >> ~/.yay-plus/logs/$create_log_time.log
         echo -e "执行：\033[34m git clone https://aur.archlinux.org/"$aur_source".git \033[0m"
         git clone https://aur.archlinux.org/"$aur_source".git >> ~/.yay-plus/logs/$create_log_time.log
+        find ./$aur_source -name "PKGBUILD" -exec found_aur_source = 1
         if [ $? -eq 0 ]; then
             echo "查找到 $aur_source ，正在开始makepkg过程"
         else
@@ -200,6 +352,25 @@ clone_aur_repo() {
         set_env
         set_proxy
         build_package
+    elif [ "$install_method" == "3" ]; then
+        clear
+        now_time=$(date +'%Y/%m/%d %H:%M:%S')
+        echo "[$now_time] 安装方式：从flathub（flatpak）安装" >> ~/.yay-plus/logs/$create_log_time.log
+        echo "正在尝试从flatpak安装..."
+        echo -e "执行：\033[34m flatpak install flathub $aur_source \033[0m"
+        flatpak install flathub $aur_source >> ~/.yay-plus/logs/$create_log_time.log 2>&1
+        if [ $? -eq 0 ]; then
+            clear
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 使用 flatpak 安装 $aur_source 成功" >> ~/.yay-plus/logs/$create_log_time.log
+            echo "flatpak安装成功"
+            upgrade_or_install_aur_package
+        else
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 使用 flatpak 安装 $aur_source 失败，软件退出，返回值7" >> ~/.yay-plus/logs/$create_log_time.log
+            echo "flatpak安装失败，请检查网络连接，或您输入的是不存在的软件包"
+            exit 7
+        fi
     fi
 }
 
@@ -270,6 +441,20 @@ build_package() {
     fi
 }
 
+run_flatpak_package() {
+    read -p "请输入要运行的flatpak软件包名：" flatpak_package_name
+    echo -e "执行：\033[34m flatpak run $flatpak_package_name \033[0m"
+    flatpak run $flatpak_package_name
+    if [ $? -eq 0 ]; then
+        now_time=$(date +'%Y/%m/%d %H:%M:%S')
+        echo "[$now_time] flatpak软件包 $flatpak_package_name 运行完成" >> ~/.yay-plus/logs/$create_log_time.log
+        echo "flatpak软件包 $flatpak_package_name 运行完成"
+    else
+        now_time=$(date +'%Y/%m/%d %H:%M:%S')
+        echo "[$now_time] flatpak软件包 $flatpak_package_name 运行失败" >> ~/.yay-plus/logs/$create_log_time.log
+        echo "flatpak软件包 $flatpak_package_name 运行失败"
+    fi
+}
 
 start_yay_plus() {
     now_time=$(date +'%Y/%m/%d %H:%M:%S')
@@ -284,7 +469,7 @@ start_yay_plus() {
     install_packages
     clear
 
-    echo -e "欢迎使用yay+ \033[31m最终版本\033[0m"
+    echo -e "欢迎使用yay+ \033[31mVersion 3\033[0m"
     echo -e "\033[36m仓库地址：https://github.com/Colin130716/yay-plus/\033[0m"
     echo -e "\033[36m看乐子（感谢我的朋友asSK）：https://github.com/qwq9scan114514/yay-s-joke/\033[0m"
 
@@ -308,7 +493,7 @@ warn() {
 
     clear
     echo -e "\033[41;37m WARNING \033[0m"
-    echo -e "  必须要用\033[31m Arch \033[0m系的系统和非\033[31m root \033[0m用户，别拿着个\033[33m Ubuntu \033[0m跑过来用这个脚本，到时候出问题又来找我，我直接给你挂 https://github.com/qwq9scan114514/yay-s-joke/ 里"
+    echo -e "必须要用\033[31m Arch \033[0m系的系统和非\033[31m root \033[0m用户，别拿着个\033[33m Ubuntu \033[0m跑过来用这个脚本，到时候出问题又来找我，我直接给你挂 https://github.com/qwq9scan114514/yay-s-joke/ 里"
     sleep 5
 
     pacman -h > /dev/zero
