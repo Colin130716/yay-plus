@@ -2,41 +2,41 @@
 
 # 定义一个函数，用于升级或安装AUR软件包
 upgrade_or_install_aur_package() {
-	cd ~/.yay-plus/packages
-	echo YAY+ | figlet | lolcat
+    cd ~/.yay-plus/packages
+    echo YAY+ | figlet | lolcat
     echo Version 3 | figlet | lolcat
-	echo "
+    echo "
     1. 安装软件包
     2. 卸载软件包
     3. 运行flatpak软件包
     4. 退出
     "
     select choice in 1 2 3 4; do
-    now_time=$(date +'%Y/%m/%d %H:%M:%S')
-    echo "[$now_time] 首页选择：$choice" >> ~/.yay-plus/logs/$create_log_time.log
-    case $choice in
-        1)
-            choose_install_method
-            ;;
-        2)
-            uninstall_package
-            ;;
-        3)
-            run_flatpak_package
-            ;;
-        4)
-            clear
-            now_time=$(date +'%Y/%m/%d %H:%M:%S')
-            echo "[$now_time] 软件退出，返回值0" >> ~/.yay-plus/logs/$create_log_time.log
-            echo "yay+正在退出，感谢使用，Shell版不再更新，可以去我的代码仓库下载PyQt版"
-            exit 0
-            ;;
-        *)
-            clear
-            echo "无效的选项，请重新输入"
-            upgrade_or_install_aur_package
-            ;;
-    esac
+        now_time=$(date +'%Y/%m/%d %H:%M:%S')
+        echo "[$now_time] 首页选择：$choice" >> ~/.yay-plus/logs/$create_log_time.log
+        case $choice in
+            1)
+                choose_install_method
+                ;;
+            2)
+                uninstall_package
+                ;;
+            3)
+                run_flatpak_package
+                ;;
+            4)
+                clear
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 软件退出，返回值0" >> ~/.yay-plus/logs/$create_log_time.log
+                echo "yay+正在退出，感谢使用"
+                exit 0
+                ;;
+            *)
+                clear
+                echo "无效的选项，请重新输入"
+                upgrade_or_install_aur_package
+                ;;
+        esac
     done
 }
 
@@ -106,10 +106,12 @@ install_packages() {
     echo "[$now_time] 为flatpak添加flathub官方源" >> ~/.yay-plus/logs/$create_log_time.log
     echo -e "\033[34m 执行：sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo \033[0m"
     sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-    echo "是否要更换flathub源为上交大源？(Y/n)"
-    select use_mirror in "y" "Y" "n" "N"; do
-        case $use_mirror in
-        y | Y)
+    read -p "是否要更换flathub源为上交大源？(Y/n)" use_mirror
+    case $use_mirror in
+        n | N)
+            break
+            ;;
+        *)
             now_time=$(date +'%Y/%m/%d %H:%M:%S')
             echo "[$now_time] 为flatpak更换flathub源为上交大源" >> ~/.yay-plus/logs/$create_log_time.log
             echo -e "\033[34m 执行：wget https://mirror.sjtu.edu.cn/flathub/flathub.gpg \033[0m"
@@ -123,14 +125,7 @@ install_packages() {
             sudo flatpak update
             break
             ;;
-        n | N)
-            break
-            ;;
-        *)
-            echo "请输入正确的选项"
-            ;;
-        esac
-    done
+    esac
 }
 
 # 定义一个函数，用于卸载软件包
@@ -140,8 +135,8 @@ uninstall_package() {
     1. 卸载 pacman 安装的软件包
     2. 卸载 flatpak(flathub) 安装的软件包
     "
-    select uninstall_package_type in 1 2; do
-        case $uninstall_package_type in
+    read uninstall_package_type
+    case $uninstall_package_type in
         1)
             read -p "请输入软件包名称（使用 pacman 安装的所有软件包都可以，包括 makepkg 使用的也是 pacman 来安装，支持多个软件包同时卸载，用空格隔开）：" uninstall_package_name
             now_time=$(date +'%Y/%m/%d %H:%M:%S')
@@ -174,9 +169,7 @@ uninstall_package() {
         *)
             echo "输入错误，请重新输入"
             ;;
-        esac
-    done
-    
+    esac
 }
 
 # 定义一个函数，用于设置代理
@@ -285,13 +278,15 @@ choose_install_method() {
     echo "3. 从flathub（flatpak）安装"
     read install_method
     sudo rm -rf $aur_source
+
     if [ "$install_method" == "1" ]; then
         clear
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] 安装方式：从pacman安装" >> ~/.yay-plus/logs/$create_log_time.log
-        echo "正在静默尝试pacman安装..."
+        echo "正在尝试pacman安装..."
         echo -e "执行：\033[34m sudo pacman -S --noconfirm $aur_source \033[0m"
-        sudo pacman -S --noconfirm $aur_source >> ~/.yay-plus/logs/$create_log_time.log
+        sudo pacman -S --noconfirm $aur_source >> ~/.yay-plus/logs/$create_log_time.log 2>&1
+
         if [ $? -eq 0 ]; then
             clear
             now_time=$(date +'%Y/%m/%d %H:%M:%S')
@@ -304,43 +299,66 @@ choose_install_method() {
             echo "pacman安装失败，请检查网络连接，或您输入的是不存在的软件包"
             echo "是否要尝试从AUR安装？(Y/n)"
             read install_from_aur
+
             if [ "$install_from_aur" == "N" ] || [ "$install_from_aur" == "n" ]; then
                 echo "是否要尝试使用flatpak安装？(Y/n)"
                 read install_from_flatpak
+
                 if [ "$install_from_flatpak" == "N" ] || [ "$install_from_flatpak" == "n" ]; then
                     clear
-                    echo "用户取消安装，软件退出，返回值6" > ~/.yay-plus/logs/$create_log_time.log
-                    echo -e "\033[31m已取消安装，yay+正在退出，返回值6"
-                    exit 6
+                    echo "用户取消安装" > ~/.yay-plus/logs/$create_log_time.log
+                    echo -e "\033[31m已取消安装"
+                    upgrade_or_install_aur_package
                 else
                     clear
                     now_time=$(date +'%Y/%m/%d %H:%M:%S')
-                    echo "[$now_time] 安装方式：从AUR安装" >> ~/.yay-plus/logs/$create_log_time.log
-                    clear
-                    now_time=$(date +'%Y/%m/%d %H:%M:%S')
-                    echo "[$now_time] 尝试从 AUR 安装" >> ~/.yay-plus/logs/$create_log_time.log
-                    echo "正在静默尝试从AUR安装..."
-                    now_time=$(date +'%Y/%m/%d %H:%M:%S')
-                    echo "[$now_time] 开始 git clone" >> ~/.yay-plus/logs/$create_log_time.log
-                    sudo rm -rf "$aur_source"
-                    echo -e "执行：\033[34m git clone https://aur.archlinux.org/"$aur_source".git \033[0m"
-                    git clone https://aur.archlinux.org/"$aur_source".git >> ~/.yay-plus/logs/$create_log_time.log 2>&1
-                    find ./$aur_source -name "PKGBUILD" -exec found_aur_source = 1
-                    if [ $found_aur_source -eq 1 ]; then
-                        echo "查找到 $aur_source ，正在开始makepkg过程"
-                    else
+                    echo "[$now_time] 安装方式：从flathub（flatpak）安装" >> ~/.yay-plus/logs/$create_log_time.log
+                    echo "正在尝试从flatpak安装..."
+                    echo -e "执行：\033[34m flatpak install flathub $aur_source \033[0m"
+                    flatpak install flathub $aur_source >> ~/.yay-plus/logs/$create_log_time.log 2>&1
+
+                    if [ $? -eq 0 ]; then
+                        clear
                         now_time=$(date +'%Y/%m/%d %H:%M:%S')
-                        echo "[$now_time] 使用 git clone $aur_source 失败，软件退出，返回值1" >> ~/.yay-plus/logs/$create_log_time.log
-                        echo "git clone失败，请检查网络连接，或您输入的是不存在的软件包"
-                        exit 1
+                        echo "[$now_time] 使用 flatpak 安装 $aur_source 成功" >> ~/.yay-plus/logs/$create_log_time.log
+                        echo "flatpak安装成功"
+                        upgrade_or_install_aur_package
+                    else
+                        clear
+                        now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                        echo "[$now_time] 使用 flatpak 安装 $aur_source 失败" >> ~/.yay-plus/logs/$create_log_time.log
+                        echo "flatpak安装失败，请检查网络连接，或您输入的是不存在的软件包"
+                        upgrade_or_install_aur_package
                     fi
-                    cd "$aur_source"
-                    set_env
-                    set_proxy
-                    build_package
-                fi
             else
-                exit 1
+                clear
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 安装方式：从AUR安装" >> ~/.yay-plus/logs/$create_log_time.log
+                clear
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 尝试从 AUR 安装" >> ~/.yay-plus/logs/$create_log_time.log
+                echo "正在静默尝试从AUR安装..."
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 开始 git clone" >> ~/.yay-plus/logs/$create_log_time.log
+                sudo rm -rf "$aur_source"
+                echo -e "执行：\033[34m git clone https://aur.archlinux.org/"$aur_source".git \033[0m"
+                git clone https://aur.archlinux.org/"$aur_source".git >> ~/.yay-plus/logs/$create_log_time.log 2>&1
+                ls ./$aur_source | grep 'PKGBUILD'
+
+                if [ $? -eq 1 ]; then
+                    echo "查找到 $aur_source ，正在开始makepkg过程"
+                else
+                    now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                    echo "[$now_time] 使用 git clone $aur_source 失败" >> ~/.yay-plus/logs/$create_log_time.log
+                    clear
+                    echo "git clone失败，请检查网络连接，或您输入的是不存在的软件包"
+                    upgrade_or_install_aur_package
+                fi
+
+                cd "$aur_source"
+                set_env
+                set_proxy
+                build_package
             fi
         fi
     elif [ "$install_method" == "2" ]; then
@@ -350,20 +368,23 @@ choose_install_method() {
         clear
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] 尝试从 AUR 安装" >> ~/.yay-plus/logs/$create_log_time.log
-        echo "正在静默尝试从AUR安装..."
+        echo "正在尝试从AUR安装..."
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] 开始 git clone" >> ~/.yay-plus/logs/$create_log_time.log
         echo -e "执行：\033[34m git clone https://aur.archlinux.org/"$aur_source".git \033[0m"
         git clone https://aur.archlinux.org/"$aur_source".git >> ~/.yay-plus/logs/$create_log_time.log
-        find ./$aur_source -name "PKGBUILD" -exec found_aur_source = 1
+        ls ./$aur_source | grep 'PKGBUILD'
+
         if [ $? -eq 0 ]; then
             echo "查找到 $aur_source ，正在开始makepkg过程"
         else
             now_time=$(date +'%Y/%m/%d %H:%M:%S')
-            echo "[$now_time] 使用 git clone $aur_source 失败，软件退出，返回值1" >> ~/.yay-plus/logs/$create_log_time.log
+            echo "[$now_time] 使用 git clone $aur_source 失败" >> ~/.yay-plus/logs/$create_log_time.log
             echo "git clone失败，请检查网络连接，或您输入的是不存在的软件包"
-            exit 1
+            clear
+            upgrade_or_install_aur_package
         fi
+
         cd "$aur_source"
         set_env
         set_proxy
@@ -375,6 +396,7 @@ choose_install_method() {
         echo "正在尝试从flatpak安装..."
         echo -e "执行：\033[34m flatpak install flathub $aur_source \033[0m"
         flatpak install flathub $aur_source >> ~/.yay-plus/logs/$create_log_time.log 2>&1
+
         if [ $? -eq 0 ]; then
             clear
             now_time=$(date +'%Y/%m/%d %H:%M:%S')
@@ -382,13 +404,15 @@ choose_install_method() {
             echo "flatpak安装成功"
             upgrade_or_install_aur_package
         else
+            clear
             now_time=$(date +'%Y/%m/%d %H:%M:%S')
-            echo "[$now_time] 使用 flatpak 安装 $aur_source 失败，软件退出，返回值7" >> ~/.yay-plus/logs/$create_log_time.log
+            echo "[$now_time] 使用 flatpak 安装 $aur_source 失败" >> ~/.yay-plus/logs/$create_log_time.log
             echo "flatpak安装失败，请检查网络连接，或您输入的是不存在的软件包"
-            exit 7
+            upgrade_or_install_aur_package
         fi
     fi
 }
+
 
 set_proxy() {
     echo "请问您需要哪个代理？1：https://fastgit.cc/（目前测试速度较慢） 2：https://mirror.ghproxy.com/（备用，下载速度较慢） 3：https://gh.api.99988866.xyz/（备用2,不稳定） 4：https://gh.llkk.cc/（推荐，速度较快） 5：https://github.moeyy.xyz/（推荐） 6：不使用Github代理（不推荐）"
@@ -440,8 +464,8 @@ set_proxy() {
 }
 
 build_package() {
-    echo -e "静默执行：\033[34m makepkg -si --skippgpcheck --noconfirm \033[0m"
-    makepkg -si --skippgpcheck --noconfirm >> ~/.yay-plus/logs/$create_log_time.log
+    echo -e "执行：\033[34m makepkg -si --skippgpcheck --noconfirm \033[0m"
+    makepkg -si --skippgpcheck --noconfirm >> ~/.yay-plus/logs/$create_log_time.log 2>&1
     exit_status=$?
     if [ $exit_status -ne 0 ]; then
         echo "makepkg 返回值 $exit_status，软件退出，返回值2" >> ~/.yay-plus/logs/$create_log_time.log
