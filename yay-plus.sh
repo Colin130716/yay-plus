@@ -11,33 +11,32 @@ upgrade_or_install_aur_package() {
     3. 运行flatpak软件包
     4. 退出
     "
-    select choice in 1 2 3 4; do
-        now_time=$(date +'%Y/%m/%d %H:%M:%S')
-        echo "[$now_time] 首页选择：$choice" >> ~/.yay-plus/logs/$create_log_time.log
-        case $choice in
-            1)
-                choose_install_method
-                ;;
-            2)
-                uninstall_package
-                ;;
-            3)
-                run_flatpak_package
-                ;;
-            4)
-                clear
-                now_time=$(date +'%Y/%m/%d %H:%M:%S')
-                echo "[$now_time] 软件退出，返回值0" >> ~/.yay-plus/logs/$create_log_time.log
-                echo "yay+正在退出，感谢使用"
-                exit 0
-                ;;
-            *)
-                clear
-                echo "无效的选项，请重新输入"
-                upgrade_or_install_aur_package
-                ;;
-        esac
-    done
+    read -p "请输入选项: " choice
+    now_time=$(date +'%Y/%m/%d %H:%M:%S')
+    echo "[$now_time] 首页选择：$choice" >> ~/.yay-plus/logs/$create_log_time.log
+    case $choice in
+        1)
+            choose_install_method
+            ;;
+        2)
+            uninstall_package
+            ;;
+        3)
+            run_flatpak_package
+            ;;
+        4)
+            clear
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 软件退出，返回值0" >> ~/.yay-plus/logs/$create_log_time.log
+            echo "yay+正在退出，感谢使用"
+            exit 0
+            ;;
+        *)
+            clear
+            echo "无效的选项，请重新输入"
+            upgrade_or_install_aur_package
+            ;;
+    esac
 }
 
 # 定义一个函数，用于安装软件包
