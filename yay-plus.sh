@@ -122,7 +122,6 @@ install_packages() {
             echo -e "\033[34m 执行：sudo flatpak remote-modify flathub --url=https://mirror.sjtu.edu.cn/flathub \033[0m"
             sudo flatpak remote-modify flathub --url=https://mirror.sjtu.edu.cn/flathub
             sudo flatpak update
-            break
             ;;
     esac
 }
@@ -149,10 +148,11 @@ uninstall_package() {
                 echo "卸载成功"
                 upgrade_or_install_aur_package
             else
+                clear
                 now_time=$(date +'%Y/%m/%d %H:%M:%S')
                 echo "[$now_time] 卸载失败" >> ~/.yay-plus/logs/$create_log_time.log
                 echo "卸载失败，请去 ~/.yay-plus/logs/$create_log_time.log 查看日志"
-                exit 4
+                upgrade_or_install_aur_package
             fi
             ;;
         2)
@@ -160,10 +160,20 @@ uninstall_package() {
             now_time=$(date +'%Y/%m/%d %H:%M:%S')
             echo "[$now_time] 使用 flatpak uninstall $uninstall_package_name" >> ~/.yay-plus/logs/$create_log_time.log
             echo -e "卸载flatpak软件包：\033[34m $uninstall_package_name \033[0m"
-            now_time=$(date +'%Y/%m/%d %H:%M:%S')
-            echo "[$now_time] 卸载完成" >> ~/.yay-plus/logs/$create_log_time.log
-            echo "卸载成功"
-            upgrade_or_install_aur_package
+            flatpak uninstall $uninstall_package_name
+            if [ $? -eq 0 ]; then
+                clear
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 卸载完成" >> ~/.yay-plus/logs/$create_log_time.log
+                echo "卸载成功"
+                upgrade_or_install_aur_package
+            else
+                clear
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 卸载失败" >> ~/.yay-plus/logs/$create_log_time.log
+                echo "卸载失败，请去 ~/.yay-plus/logs/$create_log_time.log 查看日志"
+                upgrade_or_install_aur_package
+            fi
             ;;
         *)
             echo "输入错误，请重新输入"
@@ -193,60 +203,58 @@ set_env() {
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] go代理：否" >> ~/.yay-plus/logs/$create_log_time.log
         echo "是否还原为默认代理下载地址？(Y/n)"
-        select set_go_proxy_default in y n Y N; do
-            if [ "$set_go_proxy_default" == "n" ]; then
-                now_time=$(date +'%Y/%m/%d %H:%M:%S')
-                echo "[$now_time] 还原go代理：否" >> ~/.yay-plus/logs/$create_log_time.log
-                break
-            elif [ "$set_go_proxy_default" == "N" ]; then
-                now_time=$(date +'%Y/%m/%d %H:%M:%S')
-                echo "[$now_time] 还原go代理：否" >> ~/.yay-plus/logs/$create_log_time.log
-                break
-            else
-                now_time=$(date +'%Y/%m/%d %H:%M:%S')
-                echo "[$now_time] 还原go代理：是 代理地址：https://proxy.golang.org" >> ~/.yay-plus/logs/$create_log_time.log
-                echo -e "执行：\033[34m export GOPROXY=https://proxy.golang.org \033[0m"
-                export GOPROXY=https://proxy.golang.org
-                break
-            fi
-        done
+        read set_go_proxy_default
+        if [ "$set_go_proxy_default" == "n" ]; then
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 还原go代理：否" >> ~/.yay-plus/logs/$create_log_time.log
+            break
+        elif [ "$set_go_proxy_default" == "N" ]; then
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 还原go代理：否" >> ~/.yay-plus/logs/$create_log_time.log
+            break
+        else
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 还原go代理：是 代理地址：https://proxy.golang.org" >> ~/.yay-plus/logs/$create_log_time.log
+            echo -e "执行：\033[34m export GOPROXY=https://proxy.golang.org \033[0m"
+            export GOPROXY=https://proxy.golang.org
+            break
+        fi
     fi
 
-    echo "需要使用npm代理吗？(y/N)"
+    echo "需要使用npm代理吗？（代理地址：https://registry.npmmirror.com）(y/N)"
     read set_npm_proxy
     if [ "$set_npm_proxy" == "y" ]; then
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] npm代理：是 代理地址：https://registry.npmmirror.com" >> ~/.yay-plus/logs/$create_log_time.log
         echo -e "执行：\033[34m npm config set registry https://registry.npmmirror.com \033[0m"
         npm config set registry https://registry.npmmirror.com
-        npm config set registry https://registry.npmmirror.com
+        sudo npm config set registry https://registry.npmmirror.com
     elif [ "$set_npm_proxy" == "Y" ]; then
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] npm代理：是 代理地址：https://registry.npmmirror.com" >> ~/.yay-plus/logs/$create_log_time.log
         echo -e "执行：\033[34m npm config set registry https://registry.npmmirror.com \033[0m"
         npm config set registry https://registry.npmmirror.com
-        npm config set registry https://registry.npmmirror.com
+        sudo npm config set registry https://registry.npmmirror.com
     else
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] npm代理：否" >> ~/.yay-plus/logs/$create_log_time.log
         echo "是否还原为默认代理下载地址？(Y/n)"
-        select set_npm_proxy_default in y n Y N; do
-            if [ "$set_npm_proxy_default" == "n" ]; then
-                now_time=$(date +'%Y/%m/%d %H:%M:%S')
-                echo "[$now_time] 还原npm代理：否" >> ~/.yay-plus/logs/$create_log_time.log
-                break
-            elif [ "$set_npm_proxy_default" == "N" ]; then
-                now_time=$(date +'%Y/%m/%d %H:%M:%S')
-                echo "[$now_time] 还原npm代理：否" >> ~/.yay-plus/logs/$create_log_time.log
-                break
-            else
-                now_time=$(date +'%Y/%m/%d %H:%M:%S')
-                echo "[$now_time] 还原npm代理：是 代理地址：https://registry.npmjs.org" >> ~/.yay-plus/logs/$create_log_time.log
-                echo -e "执行：\033[34m npm config set registry https://registry.npmjs.org \033[0m"
-                npm config set registry https://registry.npmjs.org
-                break
-            fi
-        done
+        read set_npm_proxy_default
+        if [ "$set_npm_proxy_default" == "n" ]; then
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 还原npm代理：否" >> ~/.yay-plus/logs/$create_log_time.log
+            break
+        elif [ "$set_npm_proxy_default" == "N" ]; then
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 还原npm代理：否" >> ~/.yay-plus/logs/$create_log_time.log
+            break
+        else
+            now_time=$(date +'%Y/%m/%d %H:%M:%S')
+            echo "[$now_time] 还原npm代理：是 代理地址：https://registry.npmjs.org" >> ~/.yay-plus/logs/$create_log_time.log
+            echo -e "执行：\033[34m npm config set registry https://registry.npmjs.org \033[0m"
+            npm config set registry https://registry.npmjs.org
+            break
+        fi
     fi
 
 	echo "是否要查看PKGBUILD内容？(y/N)"
@@ -329,6 +337,7 @@ choose_install_method() {
                         echo "flatpak安装失败，请检查网络连接，或您输入的是不存在的软件包"
                         upgrade_or_install_aur_package
                     fi
+                fi
             else
                 clear
                 now_time=$(date +'%Y/%m/%d %H:%M:%S')
@@ -496,15 +505,6 @@ run_flatpak_package() {
 }
 
 start_yay_plus() {
-    now_time=$(date +'%Y/%m/%d %H:%M:%S')
-    now_time=$(date +'%Y/%m/%d %H:%M:%S')
-    echo "[$now_time] 同步软件仓库" >> ~/.yay-plus/logs/$create_log_time.log
-    echo -e "使用\033[34m -Syyy \033[0m参数同步\033[34m pacman \033[0m软件仓库"
-    sudo pacman -Syyy
-    now_time=$(date +'%Y/%m/%d %H:%M:%S')
-    echo "[$now_time] 更新系统" >> ~/.yay-plus/logs/$create_log_time.log
-    echo -e "使用\033[34m -Su --noconfirm \033[0m参数更新\033[34m pacman \033[0m软件包"
-    sudo pacman -Su --noconfirm
     install_packages
     clear
 
