@@ -8,9 +8,9 @@
 ---
 
 ## 使用方法
-1. 下载[https://github.com/Colin130716/yay-plus/raw/refs/heads/master/yay-plus.sh](https://github.com/Colin130716/yay-plus/raw/refs/heads/master/yay-plus.sh)
-2. chmod +x <下载到的目录的路径>/yay-plus.sh
-3. <下载到的目录的路径>/yay-plus.sh
+1. ``git clone https://github.com/Colin130716/yay-plus.git``
+2. ``chmod +x <git clone到的路径>/yay-plus.sh``
+3. ``<git clone到的路径>/yay-plus.sh``
 
 ### 进阶用法（仅限zsh | bash）
 1. 添加以下行到 ``.zshrc`` | ``.bashrc`` 中
