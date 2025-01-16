@@ -12,6 +12,21 @@
 2. chmod +x <下载到的目录的路径>/yay-plus.sh
 3. <下载到的目录的路径>/yay-plus.sh
 
+### 进阶用法（仅限zsh | bash）
+1. 添加以下行到 ``.zshrc`` | ``.bashrc`` 中
+```
+alias yay+ = "<你的 yay-plus.sh 所在位置>/yay-plus.sh"
+```
+
+2. 重新加载配置文件
+```
+source ~/.zshrc
+```
+或
+```
+source ~/.bashrc
+```
+
 ---
 
 ## 注意事项
