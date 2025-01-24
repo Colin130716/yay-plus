@@ -79,7 +79,7 @@ FlySkyPigg-az：那位小白，仓库吉祥物（？
 
 **2024/8/27 17:55 yay-s-joke仓库正式诞生**
 
-**2024/8/31 21:29 asSK准备对我的yay+仓库发起袭击**
+**2024/8/31 21:29 asSK准备对我的yay+仓库发起袭击![image](https://github.com/user-attachments/assets/7a9826e9-9f12-48ca-99f4-3a4830c62642)**
 
 **2024/9/6 22:32 在写完两个窗口（不到）后GUI版暂停更新，继续更新Shell版**
 
