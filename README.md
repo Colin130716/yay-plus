@@ -3,27 +3,34 @@
 ## 别问为什么不更新，最近在准备期末考试（1月15号结束），而且还在憋大招（提前透露一下，插件功能、设置、更新、静默参数）
 
 ## 简介
-这是一个用于快速下载AUR软件包的脚本，使用Shell脚本语言编写，目前Shell版已经停更，正在使用PyQt写GUI版。
+这是一个用于快速下载AUR软件包的脚本，使用Shell脚本语言编写，正在使用PyQt写GUI版。
 
 ---
 
-## 使用方法
+## 使用方法（Shell版）
 1. ``git clone https://github.com/Colin130716/yay-plus.git``
 2. ``chmod +x <git clone到的路径>/yay-plus.sh``
 3. ``<git clone到的路径>/yay-plus.sh``
 
+## 使用方法（PyQt版）
+1. ``git clone https://github.com/Colin130716/yay-plus.git``
+2. ``cd <git clone到的路径>/yay-plus/yay-plus_PyQt``
+3. ``python3 -m pip install -r requirements.txt``
+4. **[注意：这一步非常重要！必须执行这一步，不然程序会报错异常退出]** 修改软件目录下的 pwd 文件，输入用户的密码 **（不要加其他内容）** ，然后保存退出。
+5. ``python3 -u home.py``
+
 ### 进阶用法（仅限zsh | bash）
 1. 添加以下行到 ``.zshrc`` | ``.bashrc`` 中
-```
+```bash
 alias yay+ = "<你的 yay-plus.sh 所在位置>/yay-plus.sh"
 ```
 
 2. 重新加载配置文件
-```
+```bash
 source ~/.zshrc
 ```
 或
-```
+```bash
 source ~/.bashrc
 ```
 

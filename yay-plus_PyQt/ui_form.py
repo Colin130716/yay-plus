@@ -23,6 +23,9 @@ class Ui_Home(object):
         if not Home.objectName():
             Home.setObjectName(u"Home")
         Home.resize(800, 600)
+        icon = QIcon()
+        icon.addFile(u"../../\u56fe\u7247/yay+.png", QSize(), QIcon.Normal, QIcon.Off)
+        Home.setWindowIcon(icon)
         self.centralwidget = QWidget(Home)
         self.centralwidget.setObjectName(u"centralwidget")
         self.title = QLabel(self.centralwidget)
@@ -30,7 +33,7 @@ class Ui_Home(object):
         self.title.setGeometry(QRect(0, 30, 801, 81))
         self.pushButton_install = QPushButton(self.centralwidget)
         self.pushButton_install.setObjectName(u"pushButton_install")
-        self.pushButton_install.setGeometry(QRect(50, 170, 171, 71))
+        self.pushButton_install.setGeometry(QRect(50, 170, 170, 70))
         self.pushButton_uninstall = QPushButton(self.centralwidget)
         self.pushButton_uninstall.setObjectName(u"pushButton_uninstall")
         self.pushButton_uninstall.setGeometry(QRect(310, 170, 171, 71))

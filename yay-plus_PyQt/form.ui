@@ -13,6 +13,10 @@
   <property name="windowTitle">
    <string>yay+ PyQt Version(Beta)</string>
   </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>../../图片/yay+.png</normaloff>../../图片/yay+.png</iconset>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QLabel" name="title">
     <property name="geometry">
@@ -32,8 +36,8 @@
      <rect>
       <x>50</x>
       <y>170</y>
-      <width>171</width>
-      <height>71</height>
+      <width>170</width>
+      <height>70</height>
      </rect>
     </property>
     <property name="text">
