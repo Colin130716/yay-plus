@@ -3,7 +3,7 @@
 ## 别问为什么不更新，最近在准备期末考试（1月15号结束），而且还在憋大招（提前透露一下，插件功能、设置、更新、静默参数）
 ## 已将PyQt版迁移到[yay-plus_PyQt](https://github.com/Colin130716/yay-plus_PyQt)仓库，请前往新仓库查看
 
-![icon](https://github.com/Colin130716/yay-plus_PyQt/blob/master/icon/256x256.png)
+![icon](https://github.com/Colin130716/yay-plus_PyQt/blob/master/icons/256x256.png)
 
 ## 简介
 这是一个用于快速下载AUR软件包的脚本，使用Shell脚本语言编写，正在使用PyQt写GUI版。
