@@ -1,38 +1,39 @@
 # yay-plus
 
 ## 别问为什么不更新，最近在准备期末考试（1月15号结束），而且还在憋大招（提前透露一下，插件功能、设置、更新、静默参数）
+
 ## 已将PyQt版迁移到[yay-plus_PyQt](https://github.com/Colin130716/yay-plus_PyQt)仓库，请前往新仓库查看
 
 ![icon](https://github.com/Colin130716/yay-plus_PyQt/blob/master/icons/256x256.png)
 
 ## 简介
+
 这是一个用于快速下载AUR软件包的脚本，使用Shell脚本语言编写，正在使用PyQt写GUI版。
 
 ---
 
 ## 使用方法（Shell版）
+
 1. ``git clone https://github.com/Colin130716/yay-plus.git``
 2. ``chmod +x <git clone到的路径>/yay-plus.sh``
 3. ``<git clone到的路径>/yay-plus.sh``
 
-## 使用方法（PyQt版）
-1. ``git clone https://github.com/Colin130716/yay-plus.git``
-2. ``cd <git clone到的路径>/yay-plus/yay-plus_PyQt``
-3. ``python3 -m pip install -r requirements.txt``
-4. **[注意：这一步非常重要！必须执行这一步，不然程序会报错异常退出]** 修改软件目录下的 pwd 文件，输入用户的密码 **（不要加其他内容）** ，然后保存退出。
-5. ``python3 -u home.py``
-
 ### 进阶用法（仅限zsh | bash）
+
 1. 添加以下行到 ``.zshrc`` | ``.bashrc`` 中
+
 ```bash
 alias yay+ = "<你的 yay-plus.sh 所在位置>/yay-plus.sh"
 ```
 
 2. 重新加载配置文件
+
 ```bash
 source ~/.zshrc
 ```
+
 或
+
 ```bash
 source ~/.bashrc
 ```
@@ -40,6 +41,7 @@ source ~/.bashrc
 ---
 
 ## 注意事项
+
 1. 本脚本仅适用于Arch Linux及其发行版系统，其他系统无法正常运行（为了防止有某些**用Ubuntu这类系统来试，加入了系统检测功能）。
 2. 运行时请不要尝试使用root权限运行，不然会导致makepkg阶段出现错误。
 [![前车之鉴](https://img.z4a.net/images/2024/10/07/0828FE27048941E8E6F5C7E676C46A3E.jpeg)](https://img.z4a.net/image/0828FE27048941E8E6F5C7E676C46A3E.MlR4A)
@@ -50,7 +52,8 @@ source ~/.bashrc
 
 ---
 
-## 开发者：
+## 开发者
+
 Colin130716:真正的开发者，这个程序60%全是他一个字一个字敲出来的(别问剩下的40%是谁，问就是ai写的，不然你以为我上面写了个“本软件使用CodeGeeX编写部分实现代码”干什么的）
 
 asSK：废物一个，sb一个（有点过了），你永远也想不到他下一句会蹦出什么逆天发言（给小白推荐arch的就是他！！！）
@@ -60,11 +63,13 @@ FlySkyPigg-az：那位小白，仓库吉祥物（？
 ---
 
 ## 初衷
+
 这个东西制作的初衷是我有个朋友，给小白推荐arch，那个小白还真装了，然后这都不会那都不会，以至于flatpak，hmcl，jdk，qq，fcitx5都是我们帮他装的，我们实在不希望他不会合理运用aur这个好用的东西，所以我决定写这个脚本。
 
 ---
 
 ## 友链
+
 [**展示我们对yay+这个项目的逆天发言的图片合集**](https://github.com/qwq9scan114514/yay-s-joke)
 
 ---
@@ -199,4 +204,3 @@ build_package
 [![image](https://img.z4a.net/images/2024/10/10/image.png)](https://img.z4a.net/image/image.MYQrW)
 
 ---
-
