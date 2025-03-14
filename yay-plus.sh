@@ -423,7 +423,7 @@ choose_install_method() {
 
 
 set_proxy() {
-    echo "请问您需要哪个代理？1：https://fastgit.cc/（目前测试速度较慢） 2：https://mirror.ghproxy.com/（备用，下载速度较慢） 3：https://gh.api.99988866.xyz/（备用2,不稳定） 4：https://gh.llkk.cc/（推荐，速度较快） 5：https://github.moeyy.xyz/（推荐） 6：不使用Github代理（不推荐）"
+    echo "请问您需要哪个代理？1：https://fastgit.cc/（目前测试速度较慢） 2：https://gh-proxy.com/（备用，下载速度较慢） 3：https://gh.api.99988866.xyz/（备用,不稳定） 4：https://gh.llkk.cc/（速度较快） 5：不使用Github代理（不推荐）"
     read proxy
     case $proxy in
         1)
@@ -436,11 +436,11 @@ set_proxy() {
             ;;
         2)
             now_time=$(date +'%Y/%m/%d %H:%M:%S')
-            echo "[$now_time] 使用Github代理：是 代理：https://mirror.ghproxy.com/" >> ~/.yay-plus/logs/$create_log_time.log
-            echo -e "替换：\033[37m https://github.com/ \033[0m为 \033[37m https://mirror.ghproxy.com/https://github.com/ \033[0m"
-            sed -i 's#https://github.com/#https://mirror.ghproxy.com/https://github.com/#g' PKGBUILD
-            echo -e "替换：\033[37m https://raw.githubusercontent.com/ \033[0m为 \033[37m https://mirror.ghproxy.com/https://raw.githubusercontent.com/ \033[0m"
-            sed -i 's#https://raw.githubusercontent.com/#https://mirror.ghproxy.com/https://raw.githubusercontent.com/#g' PKGBUILD
+            echo "[$now_time] 使用Github代理：是 代理：https://gh-proxy.com/" >> ~/.yay-plus/logs/$create_log_time.log
+            echo -e "替换：\033[37m https://github.com/ \033[0m为 \033[37m https://gh-proxy.com/https://github.com/ \033[0m"
+            sed -i 's#https://github.com/#https://gh-proxy.com/https://github.com/#g' PKGBUILD
+            echo -e "替换：\033[37m https://raw.githubusercontent.com/ \033[0m为 \033[37m https://gh-proxy.com/https://raw.githubusercontent.com/ \033[0m"
+            sed -i 's#https://raw.githubusercontent.com/#https://gh-proxy.com/https://raw.githubusercontent.com/#g' PKGBUILD
             ;;
         3)
             now_time=$(date +'%Y/%m/%d %H:%M:%S')
@@ -457,14 +457,6 @@ set_proxy() {
             sed -i 's#https://github.com/#https://gh.llkk.cc/https://github.com/#g' PKGBUILD
             echo -e "替换：\033[37m https://raw.githubusercontent.com/ \033[0m为 \033[37m https://gh.llkk.cc/https://raw.githubusercontent.com/ \033[0m"
             sed -i 's#https://raw.githubusercontent.com/#https://gh.llkk.cc/https://raw.githubusercontent.com/#g' PKGBUILD
-            ;;
-        5)
-            now_time=$(date +'%Y/%m/%d %H:%M:%S')
-            echo "[$now_time] 使用Github代理：是 代理：https://github.moeyy.xyz/" >> ~/.yay-plus/logs/$create_log_time.log
-            echo -e "替换：\033[37m https://github.com/ \033[0m为 \033[37m https://github.moeyy.xyz/https://github.com/ \033[0m"
-            sed -i 's#https://github.com/#https://github.moeyy.xyz/https://github.com/#g' PKGBUILD
-            echo -e "替换：\033[37m https://raw.githubusercontent.com/ \033[0m为 \033[37m https://github.moeyy.xyz/https://raw.githubusercontent.com/ \033[0m"
-            sed -i 's#https://raw.githubusercontent.com/#https://github.moeyy.xyz/https://raw.githubusercontent.com/#g' PKGBUILD
             ;;
     esac
     clear
