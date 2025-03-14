@@ -423,7 +423,7 @@ choose_install_method() {
 
 
 set_proxy() {
-    echo "请问您需要哪个代理？1：https://fastgit.cc/（目前测试速度较慢） 2：https://gh-proxy.com/（备用，下载速度较慢） 3：https://gh.api.99988866.xyz/（备用,不稳定） 4：https://gh.llkk.cc/（速度较快） 5：不使用Github代理（不推荐）"
+    echo "请问您需要哪个代理？1：https://fastgit.cc/（目前测试速度较慢） 2：https://gh-proxy.com/（推荐，下载速度快） 3：https://gh.api.99988866.xyz/（备用,不稳定） 4：https://gh.llkk.cc/（速度较快） 5：不使用Github代理（不推荐）"
     read proxy
     case $proxy in
         1)
