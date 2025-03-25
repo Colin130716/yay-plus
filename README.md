@@ -17,6 +17,7 @@
 
 > [!WARNING]
 > 不要拿各种非Arch-Based系统来试，禁止因此问题提Issue。
+> **提问前请看[提问的智慧](https://github.com/ryanhanwu/How-To-Ask-Questions-The-Smart-Way/blob/main/README-zh_CN.md)**。
 
 ![icon](https://github.com/Colin130716/yay-plus_PyQt/blob/master/icons/256x256.png)
 
