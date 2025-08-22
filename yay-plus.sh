@@ -306,12 +306,11 @@ install_via_aur() {
         exit 1
     fi
     
-    # 处理依赖
-    process_dependencies
-    
+    # 让makepkg自动处理依赖，而不是手动安装
     set_env "noninteractive"
     set_proxy "noninteractive"
-    makepkg -si --skippgpcheck --noconfirm
+    # 添加--asdeps参数
+    makepkg -si --skippgpcheck --noconfirm --asdeps
 }
 
 # 通过flatpak安装
@@ -415,7 +414,8 @@ setup_flatpak() {
         *)
             log "更换flathub源为中科大源"
             sudo flatpak remote-delete flathub 2>/dev/null
-            sudo flatpak remote-add --if-not-exists --priority=1 flathub \
+            # 删除--priority=1参数
+            sudo flatpak remote-add --if-not-exists flathub \
                 https://mirrors.ustc.edu.cn/flathub/flathub.flatpakrepo
             
             # 从上交大源导入GPG密钥
@@ -530,13 +530,11 @@ update_aur_packages() {
             git clone "$AUR_BASE_URL/$pkg.git"
             cd "$pkg" || continue
             
-            # 处理依赖
-            process_dependencies
-            
-            # 构建并安装
+            # 让makepkg自动处理依赖，而不是手动安装
             set_env
             set_proxy
-            makepkg -si --skippgpcheck --noconfirm
+            # 添加--asdeps参数
+            makepkg -si --skippgpcheck --noconfirm --asdeps
         else
             print_color "$GREEN" "$pkg 已是最新版本"
         fi
@@ -731,66 +729,10 @@ set_proxy() {
     esac
 }
 
-# 处理依赖函数
-process_dependencies() {
-    if [ ! -f "PKGBUILD" ]; then
-        print_color "$RED" "PKGBUILD不存在，无法解析依赖"
-        return 1
-    fi
-    
-    # 获取依赖列表
-    local depends makedepends checkdepends all_deps
-    depends=$(grep -E '^depends=' PKGBUILD | sed 's/depends=//' | tr -d '()' | tr '\n' ' ')
-    makedepends=$(grep -E '^makedepends=' PKGBUILD | sed 's/makedepends=//' | tr -d '()' | tr '\n' ' ')
-    checkdepends=$(grep -E '^checkdepends=' PKGBUILD | sed 's/checkdepends=//' | tr -d '()' | tr '\n' ' ')
-    
-    all_deps="$depends $makedepends $checkdepends"
-    
-    # 处理每个依赖
-    for dep in $all_deps; do
-        # 跳过已安装的包和空值
-        if [ -z "$dep" ] || pacman -Qs "^$dep$" >/dev/null 2>&1; then
-            continue
-        fi
-        
-        # 检查是否在官方仓库中
-        if pacman -Si "$dep" >/dev/null 2>&1; then
-            print_color "$CYAN" "安装官方依赖: $dep"
-            sudo pacman -S --noconfirm "$dep"
-        else
-            # 检查是否在AUR中
-            local aur_info
-            aur_info=$(curl -s "$AUR_RPC_URL&type=info&arg[]=$dep")
-            if echo "$aur_info" | grep -q '"ResultCount":1'; then
-                print_color "$CYAN" "发现AUR依赖: $dep，开始安装..."
-                
-                # 下载AUR依赖
-                cd "$PACKAGE_DIR" || return 1
-                rm -rf "$dep"
-                git clone "$AUR_BASE_URL/$dep.git"
-                cd "$dep" || continue
-                
-                # 递归处理依赖
-                process_dependencies
-                
-                # 构建并安装依赖
-                set_env "noninteractive"
-                set_proxy "noninteractive"
-                makepkg -si --skippgpcheck --noconfirm
-                
-                # 返回原目录
-                cd "$PACKAGE_DIR" || return 1
-            else
-                print_color "$YELLOW" "警告: 依赖 $dep 不在官方仓库或AUR中，可能会构建失败"
-            fi
-        fi
-    done
-}
-
 # 构建软件包
 build_package() {
-    print_color "$BLUE" "执行: makepkg -si --skippgpcheck --noconfirm"
-    if makepkg -si --skippgpcheck --noconfirm >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
+    print_color "$BLUE" "执行: makepkg -si --skippgpcheck --noconfirm --asdeps"
+    if makepkg -si --skippgpcheck --noconfirm --asdeps >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
         log "makepkg成功完成"
         print_color "$GREEN" "makepkg成功完成"
         sleep 1
@@ -876,9 +818,7 @@ install_from_aur() {
         main_menu
     fi
     
-    # 处理依赖
-    process_dependencies
-    
+    # 让makepkg自动处理依赖，而不是手动安装
     set_env
     set_proxy
     build_package
