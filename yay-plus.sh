@@ -309,8 +309,8 @@ install_via_aur() {
     # 让makepkg自动处理依赖，而不是手动安装
     set_env "noninteractive"
     set_proxy "noninteractive"
-    # 添加--asdeps参数
-    makepkg -si --skippgpcheck --noconfirm --asdeps
+    # 不使用--asdeps参数，避免成为孤儿包
+    makepkg -si --skippgpcheck --noconfirm
 }
 
 # 通过flatpak安装
@@ -533,8 +533,8 @@ update_aur_packages() {
             # 让makepkg自动处理依赖，而不是手动安装
             set_env
             set_proxy
-            # 添加--asdeps参数
-            makepkg -si --skippgpcheck --noconfirm --asdeps
+            # 不使用--asdeps参数，避免成为孤儿包
+            makepkg -si --skippgpcheck --noconfirm
         else
             print_color "$GREEN" "$pkg 已是最新版本"
         fi
@@ -729,10 +729,122 @@ set_proxy() {
     esac
 }
 
+# 改进的依赖解析函数
+parse_pkgbuild_deps() {
+    local pkgbuild_file="${1:-PKGBUILD}"
+    
+    if [ ! -f "$pkgbuild_file" ]; then
+        echo "错误: PKGBUILD文件不存在" >&2
+        return 1
+    fi
+    
+    # 使用bash解析PKGBUILD文件
+    local depends=() makedepends=() checkdepends=()
+    
+    # 创建一个临时环境来解析PKGBUILD
+    (
+        # 设置环境变量以避免副作用
+        unset -v depends makedepends checkdepends
+        
+        # 导入PKGBUILD
+        source "$pkgbuild_file" >/dev/null 2>&1
+        
+        # 输出依赖数组
+        declare -p depends makedepends checkdepends 2>/dev/null || true
+    ) | while read -r line; do
+        # 解析declare输出
+        if [[ "$line" =~ ^declare ]]; then
+            # 提取数组名称和值
+            local array_name=$(echo "$line" | grep -o 'depends\|makedepends\|checkdepends' | head -1)
+            local array_values=$(echo "$line" | sed -E "s/^declare -a [^=]+='\(|\)'$//g" | tr -d "'")
+            
+            if [ -n "$array_name" ] && [ -n "$array_values" ]; then
+                echo "$array_name=$array_values"
+            fi
+        fi
+    done
+}
+
+# 获取依赖函数
+get_dependencies() {
+    local pkgbuild_file="${1:-PKGBUILD}"
+    
+    # 解析依赖
+    local deps_output
+    deps_output=$(parse_pkgbuild_deps "$pkgbuild_file")
+    
+    # 提取各种依赖
+    local depends=$(echo "$deps_output" | grep "^depends=" | cut -d= -f2-)
+    local makedepends=$(echo "$deps_output" | grep "^makedepends=" | cut -d= -f2-)
+    local checkdepends=$(echo "$deps_output" | grep "^checkdepends=" | cut -d= -f2-)
+    
+    # 合并所有依赖
+    local all_deps="$depends $makedepends $checkdepends"
+    
+    # 清理和去重
+    echo "$all_deps" | tr ' ' '\n' | grep -v "^$" | sort -u | tr '\n' ' '
+}
+
+# 改进的依赖处理函数
+process_dependencies() {
+    if [ ! -f "PKGBUILD" ]; then
+        print_color "$RED" "PKGBUILD不存在，无法解析依赖"
+        return 1
+    fi
+    
+    # 获取依赖列表
+    local all_deps
+    all_deps=$(get_dependencies)
+    
+    # 处理每个依赖
+    for dep in $all_deps; do
+        # 清理依赖名称（移除版本约束）
+        local clean_dep=$(echo "$dep" | sed 's/[<>=].*//')
+        
+        # 跳过已安装的包和空值
+        if [ -z "$clean_dep" ] || pacman -Qs "^$clean_dep$" >/dev/null 2>&1; then
+            continue
+        fi
+        
+        # 检查是否在官方仓库中
+        if pacman -Si "$clean_dep" >/dev/null 2>&1; then
+            print_color "$CYAN" "安装官方依赖: $clean_dep"
+            sudo pacman -S --noconfirm "$clean_dep"
+        else
+            # 检查是否在AUR中
+            local aur_info
+            aur_info=$(curl -s "$AUR_RPC_URL&type=info&arg[]=$clean_dep")
+            if echo "$aur_info" | grep -q '"ResultCount":1'; then
+                print_color "$CYAN" "发现AUR依赖: $clean_dep，开始安装..."
+                
+                # 下载AUR依赖
+                cd "$PACKAGE_DIR" || return 1
+                rm -rf "$clean_dep"
+                git clone "$AUR_BASE_URL/$clean_dep.git"
+                cd "$clean_dep" || continue
+                
+                # 递归处理依赖
+                process_dependencies
+                
+                # 构建并安装依赖
+                set_env "noninteractive"
+                set_proxy "noninteractive"
+                # 使用--asdeps安装依赖
+                makepkg -si --skippgpcheck --noconfirm --asdeps
+                
+                # 返回原目录
+                cd "$OLDPWD" || return 1
+            else
+                print_color "$YELLOW" "警告: 依赖 $clean_dep 不在官方仓库或AUR中，可能会构建失败"
+            fi
+        fi
+    done
+}
+
 # 构建软件包
 build_package() {
-    print_color "$BLUE" "执行: makepkg -si --skippgpcheck --noconfirm --asdeps"
-    if makepkg -si --skippgpcheck --noconfirm --asdeps >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
+    print_color "$BLUE" "执行: makepkg -si --skippgpcheck --noconfirm"
+    if makepkg -si --skippgpcheck --noconfirm >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
         log "makepkg成功完成"
         print_color "$GREEN" "makepkg成功完成"
         sleep 1
@@ -818,10 +930,14 @@ install_from_aur() {
         main_menu
     fi
     
-    # 让makepkg自动处理依赖，而不是手动安装
+    # 处理依赖（使用改进的方法）
+    process_dependencies
+    
     set_env
     set_proxy
-    build_package
+    
+    # 不使用--asdeps安装主包，避免成为孤儿包
+    makepkg -si --skippgpcheck --noconfirm
 }
 
 # 从flatpak安装
@@ -874,7 +990,7 @@ main() {
     clear
     print_color "$GREEN" "欢迎使用yay+ Version 3"
     print_color "$CYAN" "仓库地址: https://github.com/Colin130716/yay-plus/"
-    print_color "$CYAN" "看乐子: https://github.com/qwq9scan114514/yay-s-joke/"
+    print_color "$CYAN" "看乐子（其实不是看乐子的地方，具体看仓库README）: https://github.com/qwq9scan114514/yay-s-joke/"
     
     sleep 3
     main_menu
