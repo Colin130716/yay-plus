@@ -9,7 +9,9 @@ upgrade_or_install_aur_package() {
     1. 安装软件包
     2. 卸载软件包
     3. 运行flatpak软件包
-    4. 退出
+    4. 查找软件包
+    5. 更新系统
+    6. 退出
     "
     read -p "请输入选项: " choice
     now_time=$(date +'%Y/%m/%d %H:%M:%S')
@@ -25,6 +27,12 @@ upgrade_or_install_aur_package() {
             run_flatpak_package
             ;;
         4)
+            search_packages
+            ;;
+        5)
+            update_system
+            ;;
+        6)
             clear
             now_time=$(date +'%Y/%m/%d %H:%M:%S')
             echo "[$now_time] 软件退出，返回值0" >> ~/.yay-plus/logs/$create_log_time.log
@@ -39,12 +47,103 @@ upgrade_or_install_aur_package() {
     esac
 }
 
-# 定义一个函数，用于安装软件包
-install_package() {
-    sudo pacman -S --needed --noconfirm "$1"
+# 新增：更新系统函数
+update_system() {
+    echo "
+    请选择更新方式：
+    1. 更新所有软件包 (pacman + AUR + flatpak)
+    2. 仅更新 pacman 软件包
+    3. 仅更新 AUR 软件包
+    4. 仅更新 flatpak 软件包
+    "
+    read update_method
+    
+    now_time=$(date +'%Y/%m/%d %H:%M:%S')
+    echo "[$now_time] 系统更新，方式：$update_method" >> ~/.yay-plus/logs/$create_log_time.log
+    
+    case $update_method in
+        1)
+            echo -e "\033[34m正在更新 pacman 软件包...\033[0m"
+            sudo pacman -Syu --noconfirm
+            echo -e "\033[34m正在更新 AUR 软件包...\033[0m"
+            # 这里假设您使用yay作为AUR助手
+            if command -v yay &> /dev/null; then
+                yay -Syu --noconfirm
+            else
+                echo "未找到yay，跳过AUR更新"
+            fi
+            echo -e "\033[34m正在更新 flatpak 软件包...\033[0m"
+            flatpak update -y
+            ;;
+        2)
+            echo -e "\033[34m正在更新 pacman 软件包...\033[0m"
+            sudo pacman -Syu --noconfirm
+            ;;
+        3)
+            echo -e "\033[34m正在更新 AUR 软件包...\033[0m"
+            if command -v yay &> /dev/null; then
+                yay -Syu --noconfirm
+            else
+                echo "未找到yay，无法更新AUR软件包"
+            fi
+            ;;
+        4)
+            echo -e "\033[34m正在更新 flatpak 软件包...\033[0m"
+            flatpak update -y
+            ;;
+        *)
+            echo "输入错误，返回主菜单"
+            upgrade_or_install_aur_package
+            ;;
+    esac
+    
+    echo -e "\n系统更新完成，按任意键返回主菜单..."
+    read -n 1
+    clear
+    upgrade_or_install_aur_package
 }
 
-# 定义一个函数，用于安装多个软件包
+# 查找软件包函数 - 同时搜索官方和AUR仓库
+search_packages() {
+    read -p "请输入要搜索的软件包名称: " package_name
+    
+    if [ -z "$package_name" ]; then
+        echo "输入不能为空，请重新输入"
+        search_packages
+        return
+    fi
+    
+    now_time=$(date +'%Y/%m/%d %H:%M:%S')
+    echo "[$now_time] 搜索软件包：$package_name" >> ~/.yay-plus/logs/$create_log_time.log
+    
+    echo -e "\033[34m正在搜索官方仓库...\033[0m"
+    pacman_results=$(pacman -Ss "$package_name")
+    if [ -n "$pacman_results" ]; then
+        echo "$pacman_results"
+    else
+        echo "官方仓库中未找到相关软件包"
+    fi
+    
+    echo -e "\n\033[34m正在搜索AUR仓库...\033[0m"
+    # 使用curl查询AUR API
+    aur_results=$(curl -s "https://aur.archlinux.org/rpc/?v=5&type=search&arg=$package_name")
+    if echo "$aur_results" | grep -q "No results found"; then
+        echo "AUR仓库中未找到相关软件包"
+    else
+        # 使用jq解析JSON响应
+        echo "$aur_results" | jq -r '.results[] | "\(.Name) \(.Version)\n    \(.Description)\n"' 2>/dev/null || \
+        echo "$aur_results" | grep -Eo '"Name":"[^"]*"|"Version":"[^"]*"|"Description":"[^"]*"' | \
+        sed 's/"Name":"/名称: /; s/"Version":"/ 版本: /; s/"Description":"/ 描述: /; s/"$//' | \
+        sed 'N;N;s/\n/ /g'
+    fi
+    
+    echo -e "\n按任意键返回主菜单..."
+    read -n 1
+    clear
+    upgrade_or_install_aur_package
+}
+
+# 在install_packages函数中修改flatpak源为中科大源，但GPG密钥从上交大获取
 install_packages() {
     now_time=$(date +'%Y/%m/%d %H:%M:%S')
     echo "[$now_time] 使用 sudo pacman -S --needed --noconfirm 安装 git" >> ~/.yay-plus/logs/$create_log_time.log
@@ -101,29 +200,46 @@ install_packages() {
     echo -e "安装软件包：\033[34m flatpak \033[0m"
     install_package flatpak
 
+    # 检查并安装jq（如果尚未安装）
+    if ! command -v jq &> /dev/null; then
+        now_time=$(date +'%Y/%m/%d %H:%M:%S')
+        echo "[$now_time] 使用 sudo pacman -S --needed --noconfirm 安装 jq" >> ~/.yay-plus/logs/$create_log_time.log
+        echo -e "安装软件包：\033[34m jq \033[0m"
+        install_package jq
+    fi
+
     now_time=$(date +'%Y/%m/%d %H:%M:%S')
     echo "[$now_time] 为flatpak添加flathub官方源" >> ~/.yay-plus/logs/$create_log_time.log
     echo -e "\033[34m 执行：sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo \033[0m"
     sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-    read -p "是否要更换flathub源为上交大源？(Y/n)" use_mirror
+    read -p "是否要更换flathub源为中科大源？(Y/n)" use_mirror
     case $use_mirror in
         n | N)
             break
             ;;
         *)
             now_time=$(date +'%Y/%m/%d %H:%M:%S')
-            echo "[$now_time] 为flatpak更换flathub源为上交大源" >> ~/.yay-plus/logs/$create_log_time.log
+            echo "[$now_time] 为flatpak更换flathub源为中科大源" >> ~/.yay-plus/logs/$create_log_time.log
+            # 移除现有的flathub源
+            sudo flatpak remote-delete flathub
+            # 添加中科大源
+            echo -e "\033[34m 执行：sudo flatpak remote-add --if-not-exists --priority=1 flathub https://mirrors.ustc.edu.cn/flathub/flathub.flatpakrepo \033[0m"
+            sudo flatpak remote-add --if-not-exists --priority=1 flathub https://mirrors.ustc.edu.cn/flathub/flathub.flatpakrepo
+            # 从上交大源导入GPG密钥
             echo -e "\033[34m 执行：wget https://mirror.sjtu.edu.cn/flathub/flathub.gpg \033[0m"
             wget https://mirror.sjtu.edu.cn/flathub/flathub.gpg
             echo -e "\033[34m 执行：sudo flatpak remote-modify flathub --gpg-import flathub.gpg \033[0m"
             sudo flatpak remote-modify flathub --gpg-import flathub.gpg
             echo -e "\033[34m 执行：rm flathub.gpg \033[0m"
             rm flathub.gpg
-            echo -e "\033[34m 执行：sudo flatpak remote-modify flathub --url=https://mirror.sjtu.edu.cn/flathub \033[0m"
-            sudo flatpak remote-modify flathub --url=https://mirror.sjtu.edu.cn/flathub
             sudo flatpak update
             ;;
     esac
+}
+
+# 定义一个函数，用于安装软件包
+install_package() {
+    sudo pacman -S --needed --noconfirm "$1"
 }
 
 # 定义一个函数，用于卸载软件包
@@ -181,7 +297,7 @@ uninstall_package() {
     esac
 }
 
-# 定义一个函数，用于设置代理
+# 修改set_env函数，添加kernel.org镜像替换功能
 set_env() {
     echo "需要使用go代理下载吗？（代理下载地址：https://goproxy.cn）(y/N)"
     read set_go_proxy
@@ -257,23 +373,35 @@ set_env() {
         fi
     fi
 
-	echo "是否要查看PKGBUILD内容？(y/N)"
-	read read_PKGBUILD
-	if [ "$read_PKGBUILD" == "y" ]; then
+    # 新增：替换kernel.org镜像以加速内核下载
+    echo "是否需要替换kernel.org镜像为中科大镜像以加速内核下载？(y/N)"
+    read set_kernel_mirror
+    if [ "$set_kernel_mirror" == "y" ] || [ "$set_kernel_mirror" == "Y" ]; then
+        now_time=$(date +'%Y/%m/%d %H:%M:%S')
+        echo "[$now_time] 替换kernel.org镜像：是 镜像地址：https://mirrors.ustc.edu.cn/kernel.org" >> ~/.yay-plus/logs/$create_log_time.log
+        echo -e "替换：\033[37m https://www.kernel.org/pub/ \033[0m为 \033[37m https://mirrors.ustc.edu.cn/kernel.org/ \033[0m"
+        sed -i 's#https://www.kernel.org/pub/#https://mirrors.ustc.edu.cn/kernel.org/#g' PKGBUILD
+        echo -e "替换：\033[37m https://cdn.kernel.org/pub/ \033[0m为 \033[37m https://mirrors.ustc.edu.cn/kernel.org/ \033[0m"
+        sed -i 's#https://cdn.kernel.org/pub/#https://mirrors.ustc.edu.cn/kernel.org/#g' PKGBUILD
+    fi
+
+    echo "是否要查看PKGBUILD内容？(y/N)"
+    read read_PKGBUILD
+    if [ "$read_PKGBUILD" == "y" ]; then
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] 查看PKGBUILD：是 编辑器：vim" >> ~/.yay-plus/logs/$create_log_time.log
         echo -e "执行：\033[34m vim PKGBUILD \033[0m"
-		vim PKGBUILD
+        vim PKGBUILD
     elif [ "$read_PKGBUILD" == "Y" ]; then
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] 查看PKGBUILD：是 编辑器：vim" >> ~/.yay-plus/logs/$create_log_time.log
         echo -e "执行：\033[34m vim PKGBUILD \033[0m"
-		vim PKGBUILD
+        vim PKGBUILD
     else
         now_time=$(date +'%Y/%m/%d %H:%M:%S')
         echo "[$now_time] 查看PKGBUILD：否" >> ~/.yay-plus/logs/$create_log_time.log
-	fi
-	clear
+    fi
+    clear
 }
 
 # 定义一个函数，用于选择安装方式
@@ -411,13 +539,13 @@ choose_install_method() {
             echo "[$now_time] 使用 flatpak 安装 $aur_source 成功" >> ~/.yay-plus/logs/$create_log_time.log
             echo "flatpak安装成功"
             upgrade_or_install_aur_package
-        else
-            clear
-            now_time=$(date +'%Y/%m/%d %H:%M:%S')
-            echo "[$now_time] 使用 flatpak 安装 $aur_source 失败" >> ~/.yay-plus/logs/$create_log_time.log
-            echo "flatpak安装失败，请检查网络连接，或您输入的是不存在的软件包"
-            upgrade_or_install_aur_package
-        fi
+            else
+                clear
+                now_time=$(date +'%Y/%m/%d %H:%M:%S')
+                echo "[$now_time] 使用 flatpak 安装 $aur_source 失败" >> ~/.yay-plus/logs/$create_log_time.log
+                echo "flatpak安装失败，请检查网络连接，或您输入的是不存在的软件包"
+                upgrade_or_install_aur_package
+            fi
     fi
 }
 
