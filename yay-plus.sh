@@ -281,7 +281,35 @@ parse_args() {
 install_via_pacman() {
     local package="$1"
     log "命令行安装pacman包: $package"
-    sudo pacman -S --noconfirm "$package"
+    
+    # 获取包信息
+    local package_info
+    package_info=$(pacman -Si "$package" 2>/dev/null)
+    
+    if [ $? -eq 0 ]; then
+        # 显示安装信息
+        echo ":: 即将安装的Pacman包"
+        local repo=$(echo "$package_info" | grep "^Repository" | cut -d: -f2 | tr -d ' ')
+        local name=$(echo "$package_info" | grep "^Name" | cut -d: -f2 | tr -d ' ')
+        local version=$(echo "$package_info" | grep "^Version" | cut -d: -f2 | tr -d ' ')
+        echo "$repo/$name $version"
+        echo ""
+        
+        # 确认安装
+        read -rp ":: 是否安装？[Y/n] " confirm
+        case "$confirm" in
+            [nN]*) 
+                print_color "$YELLOW" "安装已取消"
+                exit 0
+                ;;
+            *) 
+                sudo pacman -S --noconfirm "$package"
+                ;;
+        esac
+    else
+        print_color "$RED" "无法找到包 $package 的信息"
+        exit 1
+    fi
 }
 
 # 通过AUR安装
@@ -306,11 +334,30 @@ install_via_aur() {
         exit 1
     fi
     
-    # 让makepkg自动处理依赖，而不是手动安装
-    set_env "noninteractive"
-    set_proxy "noninteractive"
-    # 不使用--asdeps参数，避免成为孤儿包
-    makepkg -si --skippgpcheck --noconfirm
+    # 获取包信息
+    local pkgname pkgver pkgrel
+    source PKGBUILD >/dev/null 2>&1
+    
+    # 显示安装信息
+    echo ":: 即将安装的AUR包"
+    echo "AUR/$pkgname $pkgver-$pkgrel"
+    echo ""
+    
+    # 确认安装
+    read -rp ":: 是否安装？[Y/n] " confirm
+    case "$confirm" in
+        [nN]*) 
+            print_color "$YELLOW" "安装已取消"
+            exit 0
+            ;;
+        *) 
+            # 让makepkg自动处理依赖，而不是手动安装
+            set_env "noninteractive"
+            set_proxy "noninteractive"
+            # 不使用--asdeps参数，避免成为孤儿包
+            makepkg -si --skippgpcheck --noconfirm
+            ;;
+    esac
 }
 
 # 通过flatpak安装
@@ -884,18 +931,57 @@ choose_install_method() {
 install_from_pacman() {
     log "从pacman安装: $aur_source"
     print_color "$CYAN" "正在尝试pacman安装..."
+
+    # 获取包信息
+    local package_info
+    package_info=$(pacman -Si "$aur_source" 2>/dev/null)
     
-    if sudo pacman -S --noconfirm "$aur_source" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
-        log "pacman安装成功: $aur_source"
-        print_color "$GREEN" "pacman安装成功"
-        main_menu
-    else
-        log "pacman安装失败: $aur_source"
-        print_color "$RED" "pacman安装失败，请检查网络连接或软件包名称"
+    if [ $? -eq 0 ]; then
+        # 显示安装信息
+        print_color "$BLUE" ":: 即将安装的Pacman包"
+        local repo=$(echo "$package_info" | grep "^Repository" | cut -d: -f2 | tr -d ' ')
+        local name=$(echo "$package_info" | grep "^Name" | cut -d: -f2 | tr -d ' ')
+        local version=$(echo "$package_info" | grep "^Version" | cut -d: -f2 | tr -d ' ')
+        print_color "$GREEN" "$repo/$name $version"
+        echo ""
         
-        read -rp "是否要尝试从AUR安装？(Y/n): " install_from_aur_choice
+        # 确认安装
+        read -rp ":: 是否安装？[Y/n] " confirm
+        case "$confirm" in
+            [nN]*) 
+                print_color "$YELLOW" "安装已取消"
+                main_menu
+                return
+                ;;
+        esac
+
+        if sudo pacman -S --noconfirm "$aur_source" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
+            log "pacman安装成功: $aur_source"
+            print_color "$GREEN" "pacman安装成功"
+            main_menu
+        else
+            log "pacman安装失败: $aur_source"
+            print_color "$RED" "pacman安装失败，请检查网络连接或软件包名称"
+            
+            read -rp "是否要尝试从AUR安装？[Y/n]: " install_from_aur_choice
+            if [[ "$install_from_aur_choice" =~ ^[Nn]$ ]]; then
+                read -rp "是否要尝试使用flatpak安装？[Y/n]: " install_from_flatpak_choice
+                if [[ "$install_from_flatpak_choice" =~ ^[Nn]$ ]]; then
+                    print_color "$YELLOW" "已取消安装"
+                    main_menu
+                else
+                    install_from_flatpak
+                fi
+            else
+                install_from_aur
+            fi
+        fi
+    else
+        print_color "$RED" "无法找到包 $aur_source 的信息，可能不存在于官方仓库"
+        
+        read -rp "是否要尝试从AUR安装？[Y/n]: " install_from_aur_choice
         if [[ "$install_from_aur_choice" =~ ^[Nn]$ ]]; then
-            read -rp "是否要尝试使用flatpak安装？(Y/n): " install_from_flatpak_choice
+            read -rp "是否要尝试使用flatpak安装？[Y/n]: " install_from_flatpak_choice
             if [[ "$install_from_flatpak_choice" =~ ^[Nn]$ ]]; then
                 print_color "$YELLOW" "已取消安装"
                 main_menu
@@ -929,6 +1015,25 @@ install_from_aur() {
         print_color "$RED" "PKGBUILD不存在，可能不是有效的AUR包"
         main_menu
     fi
+    
+    # 获取包信息
+    local pkgname pkgver pkgrel
+    source PKGBUILD >/dev/null 2>&1
+    
+    # 显示安装信息
+    print_color "$BLUE" ":: 即将安装的AUR包"
+    print_color "$GREEN" "AUR/$pkgname $pkgver-$pkgrel"
+    echo ""
+    
+    # 确认安装
+    read -rp ":: 是否安装？[Y/n] " confirm
+    case "$confirm" in
+        [nN]*) 
+            print_color "$YELLOW" "安装已取消"
+            main_menu
+            return
+            ;;
+    esac
     
     # 处理依赖（使用改进的方法）
     process_dependencies
@@ -990,7 +1095,7 @@ main() {
     clear
     print_color "$GREEN" "欢迎使用yay+ Version 3"
     print_color "$CYAN" "仓库地址: https://github.com/Colin130716/yay-plus/"
-    print_color "$CYAN" "看乐子（其实不是看乐子的地方，具体看仓库README）: https://github.com/qwq9scan114514/yay-s-joke/"
+    print_color "$CYAN" "看乐子: https://github.com/qwq9scan114514/yay-s-joke/"
     
     sleep 3
     main_menu
