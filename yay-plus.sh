@@ -433,16 +433,9 @@ main_menu() {
 
 # 安装必要的软件包
 install_required_packages() {
-    local packages=(
-        git base-devel wget unzip npm go curl
-        figlet lolcat vim flatpak jq
-    )
+    local packages="git base-devel wget unzip npm go curl figlet lolcat vim flatpak jq""
     
-    for package in "${packages[@]}"; do
-        if ! command_exists "$package" && ! pacman -Qs "$package" >/dev/null; then
-            install_package "$package"
-        fi
-    done
+    install_package "$packages"
     
     # 设置flatpak源
     setup_flatpak
