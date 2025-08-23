@@ -448,7 +448,7 @@ setup_flatpak() {
         sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
     fi
     
-    read -rp "是否要更换flathub源为中科大源？(Y/n): " use_mirror
+    read -rp "是否要更换flathub源为中科大源？（Y/n）: " use_mirror
     case $use_mirror in
         [nN]) return ;;
         *)
