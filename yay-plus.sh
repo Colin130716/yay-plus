@@ -188,38 +188,54 @@ parse_args() {
     while [[ $# -gt 0 ]]; do
         case $1 in
             -S|--install)
+                install_mode="true"
                 shift
                 package_name="$1"
-                shift
                 ;;
             -R|--remove)
-                shift
-                package_name="$1"
                 remove_mode="true"
                 shift
+                package_name="$1"
                 ;;
             -Q|--query)
-                shift
-                package_name="$1"
                 query_mode="true"
                 shift
+                package_name="$1"
                 ;;
             -U|--update)
                 update_mode="true"
-                shift
                 ;;
-            --pacman|--aur|--flatpak)
-                has_specific_mode=true
+            --pacman)
                 if [ -n "$install_mode" ]; then
-                    install_mode="${1:2}"
+                    install_mode="pacman"
                 elif [ -n "$remove_mode" ]; then
-                    remove_mode="${1:2}"
+                    remove_mode="pacman"
                 elif [ -n "$query_mode" ]; then
-                    query_mode="${1:2}"
+                    query_mode="pacman"
                 elif [ -n "$update_mode" ]; then
-                    update_mode="${1:2}"
+                    update_mode="pacman"
                 fi
-                shift
+                has_specific_mode=true
+                ;;
+            --aur)
+                if [ -n "$install_mode" ]; then
+                    install_mode="aur"
+                elif [ -n "$update_mode" ]; then
+                    update_mode="aur"
+                fi
+                has_specific_mode=true
+                ;;
+            --flatpak)
+                if [ -n "$install_mode" ]; then
+                    install_mode="flatpak"
+                elif [ -n "$remove_mode" ]; then
+                    remove_mode="flatpak"
+                elif [ -n "$query_mode" ]; then
+                    query_mode="flatpak"
+                elif [ -n "$update_mode" ]; then
+                    update_mode="flatpak"
+                fi
+                has_specific_mode=true
                 ;;
             -h|--help)
                 show_help
@@ -232,9 +248,9 @@ parse_args() {
                 if [ -z "$package_name" ]; then
                     package_name="$1"
                 fi
-                shift
                 ;;
         esac
+        shift
     done
     
     # 如果没有指定具体模式(--pacman/--aur/--flatpak)，则进入交互模式
@@ -334,6 +350,9 @@ install_via_aur() {
         exit 1
     fi
     
+    # 处理依赖
+    process_dependencies
+    
     # 获取包信息
     local pkgname pkgver pkgrel
     source PKGBUILD >/dev/null 2>&1
@@ -351,7 +370,6 @@ install_via_aur() {
             exit 0
             ;;
         *) 
-            # 让makepkg自动处理依赖，而不是手动安装
             set_env "noninteractive"
             set_proxy "noninteractive"
             # 不使用--asdeps参数，避免成为孤儿包
@@ -433,7 +451,7 @@ main_menu() {
 
 # 安装必要的软件包
 install_required_packages() {
-    local packages="git base-devel wget unzip npm go curl figlet lolcat vim flatpak jq""
+    local packages="git base-devel wget unzip npm go curl figlet lolcat vim flatpak jq"
     
     install_package "$packages"
     
@@ -454,7 +472,6 @@ setup_flatpak() {
         *)
             log "更换flathub源为中科大源"
             sudo flatpak remote-delete flathub 2>/dev/null
-            # 删除--priority=1参数
             sudo flatpak remote-add --if-not-exists flathub \
                 https://mirrors.ustc.edu.cn/flathub/flathub.flatpakrepo
             
@@ -570,9 +587,11 @@ update_aur_packages() {
             git clone "$AUR_BASE_URL/$pkg.git"
             cd "$pkg" || continue
             
-            # 让makepkg自动处理依赖，而不是手动安装
-            set_env
-            set_proxy
+            # 处理依赖
+            process_dependencies
+            
+            set_env "noninteractive"
+            set_proxy "noninteractive"
             # 不使用--asdeps参数，避免成为孤儿包
             makepkg -si --skippgpcheck --noconfirm
         else
@@ -778,31 +797,18 @@ parse_pkgbuild_deps() {
         return 1
     fi
     
-    # 使用bash解析PKGBUILD文件
-    local depends=() makedepends=() checkdepends=()
+    # 使用grep和sed提取依赖信息，避免使用source
+    local depends=$(grep -E '^depends=\(|^depends=' "$pkgbuild_file" | \
+                   sed -e 's/^depends=//' -e 's/^(\|)$//g' -e "s/'//g" | tr -d '()' | tr ' ' '\n' | grep -v '^$')
     
-    # 创建一个临时环境来解析PKGBUILD
-    (
-        # 设置环境变量以避免副作用
-        unset -v depends makedepends checkdepends
-        
-        # 导入PKGBUILD
-        source "$pkgbuild_file" >/dev/null 2>&1
-        
-        # 输出依赖数组
-        declare -p depends makedepends checkdepends 2>/dev/null || true
-    ) | while read -r line; do
-        # 解析declare输出
-        if [[ "$line" =~ ^declare ]]; then
-            # 提取数组名称和值
-            local array_name=$(echo "$line" | grep -o 'depends\|makedepends\|checkdepends' | head -1)
-            local array_values=$(echo "$line" | sed -E "s/^declare -a [^=]+='\(|\)'$//g" | tr -d "'")
-            
-            if [ -n "$array_name" ] && [ -n "$array_values" ]; then
-                echo "$array_name=$array_values"
-            fi
-        fi
-    done
+    local makedepends=$(grep -E '^makedepends=\(|^makedepends=' "$pkgbuild_file" | \
+                      sed -e 's/^makedepends=//' -e 's/^(\|)$//g' -e "s/'//g" | tr -d '()' | tr ' ' '\n' | grep -v '^$')
+    
+    local checkdepends=$(grep -E '^checkdepends=\(|^checkdepends=' "$pkgbuild_file" | \
+                       sed -e 's/^checkdepends=//' -e 's/^(\|)$//g' -e "s/'//g" | tr -d '()' | tr ' ' '\n' | grep -v '^$')
+    
+    # 输出所有依赖
+    echo "$depends $makedepends $checkdepends" | tr ' ' '\n' | grep -v '^$' | sort -u
 }
 
 # 获取依赖函数
@@ -810,19 +816,7 @@ get_dependencies() {
     local pkgbuild_file="${1:-PKGBUILD}"
     
     # 解析依赖
-    local deps_output
-    deps_output=$(parse_pkgbuild_deps "$pkgbuild_file")
-    
-    # 提取各种依赖
-    local depends=$(echo "$deps_output" | grep "^depends=" | cut -d= -f2-)
-    local makedepends=$(echo "$deps_output" | grep "^makedepends=" | cut -d= -f2-)
-    local checkdepends=$(echo "$deps_output" | grep "^checkdepends=" | cut -d= -f2-)
-    
-    # 合并所有依赖
-    local all_deps="$depends $makedepends $checkdepends"
-    
-    # 清理和去重
-    echo "$all_deps" | tr ' ' '\n' | grep -v "^$" | sort -u | tr '\n' ' '
+    parse_pkgbuild_deps "$pkgbuild_file"
 }
 
 # 改进的依赖处理函数
@@ -1009,6 +1003,9 @@ install_from_aur() {
         main_menu
     fi
     
+    # 处理依赖
+    process_dependencies
+    
     # 获取包信息
     local pkgname pkgver pkgrel
     source PKGBUILD >/dev/null 2>&1
@@ -1027,9 +1024,6 @@ install_from_aur() {
             return
             ;;
     esac
-    
-    # 处理依赖（使用改进的方法）
-    process_dependencies
     
     set_env
     set_proxy
