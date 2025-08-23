@@ -31,6 +31,9 @@ chmod +x <git clone到的路径>/yay-plus.sh
 <git clone到的路径>/yay-plus.sh
 ```
 
+> [!WARNING]
+> 请不要去Releases里下载，Releases里的是旧版，有一些bug
+
 ### 进阶用法（仅限zsh | bash）
 
 1. 添加以下行到 `.zshrc` 或 `.bashrc` 中：
