@@ -451,8 +451,6 @@ main_menu() {
 
 # 安装必要的软件包
 install_required_packages() {
-    local packages="git base-devel wget unzip npm go curl figlet lolcat vim flatpak jq"
-    
     sudo pacman -S --needed --noconfirm git base-devel wget unzip npm go curl figlet lolcat vim flatpak jq
     
     # 设置flatpak源
@@ -462,9 +460,7 @@ install_required_packages() {
 # 设置flatpak源
 setup_flatpak() {
     log "设置flatpak源"
-    if ! flatpak remote-list | grep -q flathub; then
-        sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-    fi
+    sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
     
     read -rp "是否要更换flathub源为中科大源？（Y/n）: " use_mirror
     case $use_mirror in
