@@ -7,6 +7,7 @@ readonly PACKAGE_DIR="$HOME/.yay-plus/packages"
 readonly CREATE_LOG_TIME=$(date +'%Y%m%d_%H%M%S')
 readonly AUR_BASE_URL="https://aur.archlinux.org"
 readonly AUR_RPC_URL="$AUR_BASE_URL/rpc/?v=5"
+readonly AUR_GITHUB_MIRROR="https://github.com/archlinux/aur.git"
 
 # 颜色定义
 readonly RED='\033[0;31m'
@@ -20,6 +21,7 @@ readonly NC='\033[0m' # No Color
 DEFAULT_GITHUB_PROXY="1"
 DEFAULT_GO_PROXY="true"
 DEFAULT_NPM_PROXY="true"
+DEFAULT_AUR_SOURCE="aur"
 
 # 初始化函数
 init() {
@@ -53,6 +55,7 @@ load_config() {
         DEFAULT_GITHUB_PROXY=$(get_config_value "github_proxy" "$DEFAULT_GITHUB_PROXY")
         DEFAULT_GO_PROXY=$(get_config_value "go_proxy" "$DEFAULT_GO_PROXY")
         DEFAULT_NPM_PROXY=$(get_config_value "npm_proxy" "$DEFAULT_NPM_PROXY")
+        DEFAULT_AUR_SOURCE=$(get_config_value "aur_source" "$DEFAULT_AUR_SOURCE")
     else
         log "配置文件不存在，使用默认配置"
     fi
@@ -95,10 +98,13 @@ go_proxy=$DEFAULT_GO_PROXY
 # NPM代理设置 (true:启用代理, false:不启用代理)
 # 启用后会使用 https://registry.npmmirror.com 作为NPM镜像源
 npm_proxy=$DEFAULT_NPM_PROXY
+
+# AUR源选择 (aur:使用AUR官方, github:使用GitHub镜像)
+aur_source=$DEFAULT_AUR_SOURCE
 EOF
     
     print_color "$GREEN" "配置文件已创建: $CONFIG_FILE"
-    print_color "$CYAN" "默认设置: GitHub代理=1, Go代理=true, NPM代理=true"
+    print_color "$CYAN" "默认设置: GitHub代理=1, Go代理=true, NPM代理=true, AUR源=aur"
     print_color "$CYAN" "您可以编辑此文件来自定义默认行为"
 }
 
@@ -120,6 +126,52 @@ print_color() {
 # 检查命令是否存在
 command_exists() {
     command -v "$1" >/dev/null 2>&1
+}
+
+# 克隆AUR包函数
+clone_aur_package() {
+    local package="$1"
+    local target_dir="$2"
+    
+    cd "$PACKAGE_DIR" || return 1
+    sudo rm -rf "$target_dir"
+    
+    # 根据配置选择AUR源
+    local aur_source="${3:-$DEFAULT_AUR_SOURCE}"
+    
+    if [ "$aur_source" = "github" ]; then
+        log "从GitHub镜像克隆AUR包: $package"
+        print_color "$CYAN" "从GitHub镜像克隆AUR包: $package"
+        
+        if ! git clone --branch "$package" --single-branch "$AUR_GITHUB_MIRROR" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
+            log "从GitHub镜像克隆失败，尝试使用AUR官方源"
+            print_color "$YELLOW" "从GitHub镜像克隆失败，尝试使用AUR官方源"
+            
+            # 回退到AUR官方源
+            if ! git clone "$AUR_BASE_URL/$package.git" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
+                log "git clone失败: $package"
+                print_color "$RED" "git clone失败，请检查网络连接或软件包名称"
+                return 1
+            fi
+        fi
+    else
+        log "从AUR官方克隆AUR包: $package"
+        print_color "$CYAN" "从AUR官方克隆AUR包: $package"
+        
+        if ! git clone "$AUR_BASE_URL/$package.git" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
+            log "从AUR官方克隆失败，尝试使用GitHub镜像"
+            print_color "$YELLOW" "从AUR官方克隆失败，尝试使用GitHub镜像"
+            
+            # 回退到GitHub镜像
+            if ! git clone --branch "$package" --single-branch "$AUR_GITHUB_MIRROR" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
+                log "git clone失败: $package"
+                print_color "$RED" "git clone失败，请检查网络连接或软件包名称"
+                return 1
+            fi
+        fi
+    fi
+    
+    return 0
 }
 
 # 安装软件包函数
@@ -333,12 +385,8 @@ install_via_aur() {
     local package="$1"
     log "命令行安装AUR包: $package"
     
-    cd "$PACKAGE_DIR" || exit 1
-    sudo rm -rf "$package"
-    
-    if ! git clone "$AUR_BASE_URL/$package.git" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
-        log "git clone失败: $package"
-        print_color "$RED" "git clone失败，请检查网络连接或软件包名称"
+    # 使用新的克隆函数
+    if ! clone_aur_package "$package" "$package"; then
         exit 1
     fi
     
@@ -577,10 +625,11 @@ update_aur_packages() {
                 continue
             fi
             
-            # 下载并构建更新
-            cd "$PACKAGE_DIR" || continue
-            rm -rf "$pkg"
-            git clone "$AUR_BASE_URL/$pkg.git"
+            # 使用新的克隆函数下载并构建更新
+            if ! clone_aur_package "$pkg" "$pkg"; then
+                continue
+            fi
+            
             cd "$pkg" || continue
             
             # 处理依赖
@@ -730,21 +779,26 @@ set_proxy() {
                 log "使用GitHub代理: https://github.akams.cn/"
                 sed -i 's#https://github.com/#https://github.akams.cn/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://github.akams.cn/https://raw.githubusercontent.com/#g' PKGBUILD
+                # 添加对GitHub镜像的代理支持
+                sed -i 's#https://github.com/archlinux/aur#https://github.akams.cn/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
                 ;;
             2)
                 log "使用GitHub代理: https://gh-proxy.com/"
                 sed -i 's#https://github.com/#https://gh-proxy.com/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://gh-proxy.com/https://raw.githubusercontent.com/#g' PKGBUILD
+                sed -i 's#https://github.com/archlinux/aur#https://gh-proxy.com/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
                 ;;
             3)
                 log "使用GitHub代理: https://ghfile.geekertao.top/"
                 sed -i 's#https://github.com/#https://ghfile.geekertao.top/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://ghfile.geekertao.top/https://raw.githubusercontent.com/#g' PKGBUILD
+                sed -i 's#https://github.com/archlinux/aur#https://ghfile.geekertao.top/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
                 ;;
             4)
                 log "使用GitHub代理: https://gh.llkk.cc/"
                 sed -i 's#https://github.com/#https://gh.llkk.cc/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://gh.llkk.cc/https://raw.githubusercontent.com/#g' PKGBUILD
+                sed -i 's#https://github.com/archlinux/aur#https://gh.llkk.cc/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
                 ;;
         esac
         return
@@ -765,21 +819,25 @@ set_proxy() {
             log "使用GitHub代理: https://github.akams.cn/"
             sed -i 's#https://github.com/#https://github.akams.cn/https://github.com/#g' PKGBUILD
             sed -i 's#https://raw.githubusercontent.com/#https://github.akams.cn/https://raw.githubusercontent.com/#g' PKGBUILD
+            sed -i 's#https://github.com/archlinux/aur#https://github.akams.cn/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
             ;;
         2)
             log "使用GitHub代理: https://gh-proxy.com/"
             sed -i 's#https://github.com/#https://gh-proxy.com/https://github.com/#g' PKGBUILD
             sed -i 's#https://raw.githubusercontent.com/#https://gh-proxy.com/https://raw.githubusercontent.com/#g' PKGBUILD
+            sed -i 's#https://github.com/archlinux/aur#https://gh-proxy.com/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
             ;;
         3)
             log "使用GitHub代理: https://ghfile.geekertao.top/"
             sed -i 's#https://github.com/#https://ghfile.geekertao.top/https://github.com/#g' PKGBUILD
             sed -i 's#https://raw.githubusercontent.com/#https://ghfile.geekertao.top/https://raw.githubusercontent.com/#g' PKGBUILD
+            sed -i 's#https://github.com/archlinux/aur#https://ghfile.geekertao.top/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
             ;;
         4)
             log "使用GitHub代理: https://gh.llkk.cc/"
             sed -i 's#https://github.com/#https://gh.llkk.cc/https://github.com/#g' PKGBUILD
             sed -i 's#https://raw.githubusercontent.com/#https://gh.llkk.cc/https://raw.githubusercontent.com/#g' PKGBUILD
+            sed -i 's#https://github.com/archlinux/aur#https://gh.llkk.cc/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
             ;;
     esac
 }
@@ -850,7 +908,12 @@ process_dependencies() {
                 # 下载AUR依赖
                 cd "$PACKAGE_DIR" || return 1
                 rm -rf "$clean_dep"
-                git clone "$AUR_BASE_URL/$clean_dep.git"
+                
+                # 使用新的克隆函数
+                if ! clone_aur_package "$clean_dep" "$clean_dep"; then
+                    continue
+                fi
+                
                 cd "$clean_dep" || continue
                 
                 # 递归处理依赖
@@ -982,13 +1045,10 @@ install_from_aur() {
     log "从AUR安装: $aur_source"
     print_color "$CYAN" "正在尝试从AUR安装..."
     
-    cd "$PACKAGE_DIR" || return 1
-    sudo rm -rf "$aur_source"
-    
-    if ! git clone "$AUR_BASE_URL/$aur_source.git" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
-        log "git clone失败: $aur_source"
-        print_color "$RED" "git clone失败，请检查网络连接或软件包名称"
+    # 使用新的克隆函数
+    if ! clone_aur_package "$aur_source" "$aur_source"; then
         main_menu
+        return
     fi
     
     cd "$aur_source" || return 1
@@ -1044,6 +1104,24 @@ install_from_flatpak() {
     main_menu
 }
 
+# AUR源选择菜单
+choose_aur_source() {
+    echo "请选择AUR源："
+    echo "1. AUR官方 (aur.archlinux.org)"
+    echo "2. GitHub镜像 (github.com/archlinux/aur)"
+    
+    read -r aur_source_choice
+    
+    case $aur_source_choice in
+        1) echo "aur" ;;
+        2) echo "github" ;;
+        *)
+            print_color "$RED" "无效的选项，使用默认值: aur"
+            echo "aur"
+            ;;
+    esac
+}
+
 # 系统检测
 system_check() {
     print_color "$RED" "WARNING"
@@ -1079,6 +1157,7 @@ main() {
     print_color "$GREEN" "欢迎使用yay+ Version 3"
     print_color "$CYAN" "仓库地址: https://github.com/Colin130716/yay-plus/"
     print_color "$CYAN" "看乐子: https://github.com/qwq9scan114514/yay-s-joke/"
+    print_color "$YELLOW" "注意: AUR近期遭受攻击，已添加GitHub镜像作为备用源"
     
     sleep 3
     main_menu
