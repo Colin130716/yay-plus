@@ -12,6 +12,11 @@
 - [yay+大事祭](#大事祭)
 - [旧版代码展示](#旧版代码展示)
 
+---
+
+2025.08.24 ArchLinux官网及AUR被攻击，请不要提Issue。
+
+
 ## 简介
 
 这是一个用于快速下载AUR软件包的脚本，使用Shell脚本语言编写，正在使用PyQt开发GUI版本。[PyQt版](https://github.com/Colin130716/yay-plus_PyQt)已经迁移到新仓库，请前往查看。开源协议：GPLv3。
