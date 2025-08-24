@@ -202,12 +202,16 @@ Yay+ - AUR 助手增强版
 
   -Q, --query <包名>       查询软件包信息
       --pacman             查询官方仓库软件包
+      --aur                查询AUR软件包
       --flatpak            查询Flatpak软件包
+      --online             查询云端仓库软件包
+      --local              查询本地已安装软件包
 
   -U, --update             更新系统
       --pacman             更新官方仓库软件包
       --aur                更新AUR软件包
       --flatpak            更新Flatpak软件包
+      --all                更新所有软件包 (pacman + AUR + flatpak)
 
   -h, --help               显示此帮助信息
   -v, --version            显示版本信息
@@ -217,7 +221,10 @@ Yay+ - AUR 助手增强版
   yay-plus -S --aur yay            从AUR安装yay
   yay-plus -R --pacman firefox     卸载Firefox
   yay-plus -Q --pacman firefox     查询Firefox信息
+  yay-plus -Q --online --aur firefox 查询AUR云端Firefox信息
+  yay-plus -Q --local --aur        查询所有本地AUR软件包
   yay-plus -U --aur                更新所有AUR软件包
+  yay-plus -U --all                更新所有软件包
 EOF
     exit 0
 }
@@ -233,9 +240,11 @@ parse_args() {
     local install_mode=""
     local remove_mode=""
     local query_mode=""
+    local query_scope=""  # 新增：查询范围（online/local）
     local update_mode=""
     local package_name=""
     local has_specific_mode=false
+    local query_type=""   # 新增：查询类型（pacman/aur/flatpak）
     
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -263,7 +272,7 @@ parse_args() {
                 elif [ -n "$remove_mode" ]; then
                     remove_mode="pacman"
                 elif [ -n "$query_mode" ]; then
-                    query_mode="pacman"
+                    query_type="pacman"
                 elif [ -n "$update_mode" ]; then
                     update_mode="pacman"
                 fi
@@ -272,6 +281,8 @@ parse_args() {
             --aur)
                 if [ -n "$install_mode" ]; then
                     install_mode="aur"
+                elif [ -n "$query_mode" ]; then
+                    query_type="aur"
                 elif [ -n "$update_mode" ]; then
                     update_mode="aur"
                 fi
@@ -283,9 +294,27 @@ parse_args() {
                 elif [ -n "$remove_mode" ]; then
                     remove_mode="flatpak"
                 elif [ -n "$query_mode" ]; then
-                    query_mode="flatpak"
+                    query_type="flatpak"
                 elif [ -n "$update_mode" ]; then
                     update_mode="flatpak"
+                fi
+                has_specific_mode=true
+                ;;
+            --online)
+                if [ -n "$query_mode" ]; then
+                    query_scope="online"
+                fi
+                has_specific_mode=true
+                ;;
+            --local)
+                if [ -n "$query_mode" ]; then
+                    query_scope="local"
+                fi
+                has_specific_mode=true
+                ;;
+            --all)
+                if [ -n "$update_mode" ]; then
+                    update_mode="all"
                 fi
                 has_specific_mode=true
                 ;;
@@ -325,17 +354,45 @@ parse_args() {
             flatpak) remove_via_flatpak "$package_name" ;;
         esac
         exit 0
-    elif [ -n "$query_mode" ] && [ -n "$package_name" ]; then
-        case $query_mode in
-            pacman) query_via_pacman "$package_name" ;;
-            flatpak) query_via_flatpak "$package_name" ;;
-        esac
+    elif [ -n "$query_mode" ]; then
+        # 处理查询操作
+        if [ -z "$query_scope" ]; then
+            print_color "$RED" "必须指定查询范围: --online 或 --local"
+            exit 1
+        fi
+        
+        if [ -z "$query_type" ]; then
+            # 如果没有指定查询类型，默认查询所有类型
+            case "$query_scope" in
+                online) query_online_all "$package_name" ;;
+                local) query_local_all "$package_name" ;;
+            esac
+        else
+            # 指定了查询类型
+            case "$query_scope" in
+                online)
+                    case "$query_type" in
+                        pacman) query_online_pacman "$package_name" ;;
+                        aur) query_online_aur "$package_name" ;;
+                        flatpak) query_online_flatpak "$package_name" ;;
+                    esac
+                    ;;
+                local)
+                    case "$query_type" in
+                        pacman) query_local_pacman "$package_name" ;;
+                        aur) query_local_aur "$package_name" ;;
+                        flatpak) query_local_flatpak "$package_name" ;;
+                    esac
+                    ;;
+            esac
+        fi
         exit 0
     elif [ -n "$update_mode" ]; then
         case $update_mode in
             pacman) update_pacman_packages ;;
             aur) update_aur_packages ;;
             flatpak) update_flatpak_packages ;;
+            all) update_all_packages ;;
             *) update_system ;;
         esac
         exit 0
@@ -447,18 +504,165 @@ remove_via_flatpak() {
     flatpak uninstall -y "$package"
 }
 
-# 通过pacman查询
-query_via_pacman() {
+# 查询云端pacman包
+query_online_pacman() {
     local package="$1"
-    log "命令行查询pacman包: $package"
-    pacman -Si "$package" || pacman -Qi "$package"
+    log "命令行查询云端pacman包: $package"
+    
+    if [ -z "$package" ]; then
+        # 如果没有指定包名，显示所有可用包
+        pacman -Sl
+    else
+        # 查询特定包
+        pacman -Ss "$package"
+    fi
 }
 
-# 通过flatpak查询
-query_via_flatpak() {
+# 查询云端AUR包
+query_online_aur() {
     local package="$1"
-    log "命令行查询flatpak包: $package"
-    flatpak info "$package" || flatpak list | grep "$package"
+    log "命令行查询云端AUR包: $package"
+    
+    if [ -z "$package" ]; then
+        # 如果没有指定包名，显示最近更新的AUR包
+        print_color "$YELLOW" "需要指定包名来查询AUR包"
+        return 1
+    else
+        # 查询特定包
+        local aur_results
+        aur_results=$(curl -s "$AUR_RPC_URL&type=search&arg=$package")
+        
+        if echo "$aur_results" | grep -q "No results found"; then
+            print_color "$YELLOW" "AUR仓库中未找到相关软件包"
+        else
+            echo "$aur_results" | jq -r '.results[] | "\(.Name) \(.Version)\n    \(.Description)\n"' 2>/dev/null ||
+            echo "$aur_results" | grep -Eo '"Name":"[^"]*"|"Version":"[^"]*"|"Description":"[^"]*"' | \
+                sed 's/"Name":"/名称: /; s/"Version":"/ 版本: /; s/"Description":"/ 描述: /; s/"$//' | \
+                sed 'N;N;s/\n/ /g'
+        fi
+    fi
+}
+
+# 查询云端flatpak包
+query_online_flatpak() {
+    local package="$1"
+    log "命令行查询云端flatpak包: $package"
+    
+    if [ -z "$package" ]; then
+        # 如果没有指定包名，显示所有可用包
+        flatpak remote-ls flathub
+    else
+        # 查询特定包
+        flatpak search "$package"
+    fi
+}
+
+# 查询本地pacman包
+query_local_pacman() {
+    local package="$1"
+    log "命令行查询本地pacman包: $package"
+    
+    if [ -z "$package" ]; then
+        # 如果没有指定包名，显示所有已安装包
+        pacman -Q
+    else
+        # 查询特定包
+        pacman -Qi "$package" || pacman -Qs "$package"
+    fi
+}
+
+# 查询本地AUR包
+query_local_aur() {
+    local package="$1"
+    log "命令行查询本地AUR包: $package"
+    
+    if [ -z "$package" ]; then
+        # 如果没有指定包名，显示所有已安装AUR包
+        pacman -Qm
+    else
+        # 查询特定包
+        pacman -Qi "$package" 2>/dev/null || pacman -Qm | grep "$package"
+    fi
+}
+
+# 查询本地flatpak包
+query_local_flatpak() {
+    local package="$1"
+    log "命令行查询本地flatpak包: $package"
+    
+    if [ -z "$package" ]; then
+        # 如果没有指定包名，显示所有已安装flatpak包
+        flatpak list
+    else
+        # 查询特定包
+        flatpak info "$package" 2>/dev/null || flatpak list | grep "$package"
+    fi
+}
+
+# 查询所有云端包
+query_online_all() {
+    local package="$1"
+    log "命令行查询所有云端包: $package"
+    
+    if [ -z "$package" ]; then
+        print_color "$YELLOW" "需要指定包名来查询所有云端包"
+        return 1
+    fi
+    
+    print_color "$CYAN" "=== 官方仓库 ==="
+    query_online_pacman "$package"
+    
+    echo ""
+    print_color "$CYAN" "=== AUR仓库 ==="
+    query_online_aur "$package"
+    
+    echo ""
+    print_color "$CYAN" "=== Flatpak仓库 ==="
+    query_online_flatpak "$package"
+}
+
+# 查询所有本地包
+query_local_all() {
+    local package="$1"
+    log "命令行查询所有本地包: $package"
+    
+    if [ -z "$package" ]; then
+        # 显示所有已安装包
+        print_color "$CYAN" "=== 官方仓库包 ==="
+        pacman -Qn
+        
+        echo ""
+        print_color "$CYAN" "=== AUR包 ==="
+        pacman -Qm
+        
+        echo ""
+        print_color "$CYAN" "=== Flatpak包 ==="
+        flatpak list
+    else
+        # 查询特定包
+        print_color "$CYAN" "=== 官方仓库包 ==="
+        query_local_pacman "$package"
+        
+        echo ""
+        print_color "$CYAN" "=== AUR包 ==="
+        query_local_aur "$package"
+        
+        echo ""
+        print_color "$CYAN" "=== Flatpak包 ==="
+        query_local_flatpak "$package"
+    fi
+}
+
+# 更新所有软件包
+update_all_packages() {
+    log "命令行更新所有软件包"
+    print_color "$CYAN" "更新所有软件包 (pacman + AUR + flatpak)"
+    
+    update_pacman_packages
+    update_aur_packages
+    update_flatpak_packages
+    
+    print_color "$GREEN" "所有软件包更新完成"
 }
 
 # 主菜单函数
@@ -1107,7 +1311,7 @@ install_from_flatpak() {
 # AUR源选择菜单
 choose_aur_source() {
     echo "请选择AUR源："
-    echo "1. AUR官方 (aur.archlinux.org)"
+    echo "1. AUR官方 (aur.archlinux.org)
     echo "2. GitHub镜像 (github.com/archlinux/aur)"
     
     read -r aur_source_choice
