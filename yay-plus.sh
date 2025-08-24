@@ -471,14 +471,13 @@ setup_flatpak() {
         [nN]) return ;;
         *)
             log "更换flathub源为中科大源"
-            sudo flatpak remote-delete flathub 2>/dev/null
-            sudo flatpak remote-add --if-not-exists flathub \
-                https://mirrors.ustc.edu.cn/flathub/flathub.flatpakrepo
+            flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
             
             # 从上交大源导入GPG密钥
             wget -q https://mirror.sjtu.edu.cn/flathub/flathub.gpg
             sudo flatpak remote-modify flathub --gpg-import flathub.gpg
             rm -f flathub.gpg
+            sudo flatpak remote-modify flathub --url=https://mirrors.ustc.edu.cn/flathub
             sudo flatpak update
             ;;
     esac
