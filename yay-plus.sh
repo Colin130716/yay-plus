@@ -553,7 +553,8 @@ update_system() {
 # 更新pacman包
 update_pacman_packages() {
     print_color "$CYAN" "正在更新 pacman 软件包..."
-    sudo pacman -Syu --noconfirm
+    sudo pacman -Syyy
+    sudo pacman -Su --noconfirm
 }
 
 # 更新AUR包
