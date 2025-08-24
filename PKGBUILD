@@ -8,7 +8,7 @@ url="https://github.com/Colin130716/yay-plus"
 license=('GPL3')
 depends=('git' 'base-devel' 'wget' 'unzip' 'npm' 'go' 'curl' 'figlet' 'lolcat' 'vim' 'flatpak' 'jq')
 source=("https://github.com/Colin130716/yay-plus/raw/master/yay-plus.sh")
-sha256sums=('d8a923b611e3522859641686f4c7855bb5eabd81487d22f52541f56c6fd044ca')
+sha256sums=('SKIP')
 
 package() {
     install -Dm755 "$srcdir/yay-plus.sh" "$pkgdir/usr/bin/yay-plus"
