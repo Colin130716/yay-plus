@@ -453,7 +453,7 @@ main_menu() {
 install_required_packages() {
     local packages="git base-devel wget unzip npm go curl figlet lolcat vim flatpak jq"
     
-    install_package git base-devel wget unzip npm go curl figlet lolcat vim flatpak jq
+    sudo pacman -S --needed --noconfirm git base-devel wget unzip npm go curl figlet lolcat vim flatpak jq
     
     # 设置flatpak源
     setup_flatpak
