@@ -1,4 +1,4 @@
-# yay-plus README v38
+# yay-plus README v39
 
 ## 目录
 
@@ -29,7 +29,7 @@
 
 ## 使用方法
 
-### 安装步骤
+### 使用步骤
 
 ```bash
 git clone https://github.com/Colin130716/yay-plus.git
@@ -39,26 +39,6 @@ chmod +x <git clone到的路径>/yay-plus.sh
 
 > [!TIP]
 > 你可以在Releases发布页中找到最新稳定版的包，可以直接使用pacman -U安装。
-
-### 进阶用法（仅限zsh | bash）
-
-1. 添加以下行到 `.zshrc` 或 `.bashrc` 中：
-
-```bash
-alias yay+="<你的yay-plus.sh所在位置>/yay-plus.sh"
-```
-
-2. 重新加载配置文件：
-
-```bash
-source ~/.zshrc
-```
-
-或者
-
-```bash
-source ~/.bashrc
-```
 
 ---
 
