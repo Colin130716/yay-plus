@@ -14,7 +14,7 @@
 
 ---
 
-2025.08.24 ArchLinux官网及AUR被攻击，请不要提Issue。
+2025.08.24 ArchLinux官网及AUR被攻击，请见[ArchLinuxCN对此情况的说明](https://www.archlinuxcn.org/recent-services-outages/)。
 
 
 ## 简介
