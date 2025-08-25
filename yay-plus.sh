@@ -1311,8 +1311,8 @@ install_from_flatpak() {
 # AUR源选择菜单
 choose_aur_source() {
     echo "请选择AUR源："
-    echo "1. AUR官方 (aur.archlinux.org)
-    echo "2. GitHub镜像 (github.com/archlinux/aur)"
+    echo "1. AUR官方（aur.archlinux.org）"
+    echo "2. GitHub镜像（github.com/archlinux/aur）"
     
     read -r aur_source_choice
     
