@@ -240,31 +240,45 @@ parse_args() {
     local install_mode=""
     local remove_mode=""
     local query_mode=""
-    local query_scope=""  # 新增：查询范围（online/local）
+    local query_scope=""  # 查询范围（online/local）
     local update_mode=""
     local package_name=""
     local has_specific_mode=false
-    local query_type=""   # 新增：查询类型（pacman/aur/flatpak）
-    
+    local query_type=""   # 查询类型（pacman/aur/flatpak）
+
+    # 保存原始参数用于调试
+    log "命令行参数: $*"
+
     while [[ $# -gt 0 ]]; do
         case $1 in
             -S|--install)
-                install_mode="true"
+                install_mode="generic"
                 shift
-                package_name="$1"
+                # 只有在没有后续选项时才将下一个参数视为包名
+                if [[ $# -gt 0 && ! $1 =~ ^- ]]; then
+                    package_name="$1"
+                    shift
+                fi
                 ;;
             -R|--remove)
-                remove_mode="true"
+                remove_mode="generic"
                 shift
-                package_name="$1"
+                if [[ $# -gt 0 && ! $1 =~ ^- ]]; then
+                    package_name="$1"
+                    shift
+                fi
                 ;;
             -Q|--query)
                 query_mode="true"
                 shift
-                package_name="$1"
+                if [[ $# -gt 0 && ! $1 =~ ^- ]]; then
+                    package_name="$1"
+                    shift
+                fi
                 ;;
             -U|--update)
-                update_mode="true"
+                update_mode="generic"
+                shift
                 ;;
             --pacman)
                 if [ -n "$install_mode" ]; then
@@ -277,6 +291,7 @@ parse_args() {
                     update_mode="pacman"
                 fi
                 has_specific_mode=true
+                shift
                 ;;
             --aur)
                 if [ -n "$install_mode" ]; then
@@ -287,6 +302,7 @@ parse_args() {
                     update_mode="aur"
                 fi
                 has_specific_mode=true
+                shift
                 ;;
             --flatpak)
                 if [ -n "$install_mode" ]; then
@@ -299,59 +315,82 @@ parse_args() {
                     update_mode="flatpak"
                 fi
                 has_specific_mode=true
+                shift
                 ;;
             --online)
                 if [ -n "$query_mode" ]; then
                     query_scope="online"
                 fi
                 has_specific_mode=true
+                shift
                 ;;
             --local)
                 if [ -n "$query_mode" ]; then
                     query_scope="local"
                 fi
                 has_specific_mode=true
+                shift
                 ;;
             --all)
                 if [ -n "$update_mode" ]; then
                     update_mode="all"
                 fi
                 has_specific_mode=true
+                shift
                 ;;
             -h|--help)
                 show_help
+                exit 0
                 ;;
             -v|--version)
                 show_version
+                exit 0
                 ;;
             *)
                 # 如果没有指定模式，则认为是包名
-                if [ -z "$package_name" ]; then
+                if [ -z "$package_name" ] && [[ ! $1 =~ ^- ]]; then
                     package_name="$1"
+                    shift
+                else
+                    print_color "$RED" "未知参数: $1"
+                    exit 1
                 fi
                 ;;
         esac
-        shift
     done
-    
-    # 如果没有指定具体模式(--pacman/--aur/--flatpak)，则进入交互模式
-    if [ "$has_specific_mode" = false ]; then
-        log "未指定具体模式，进入交互模式"
-        return 1
-    fi
-    
+
+    log "解析结果: install_mode=$install_mode, remove_mode=$remove_mode, query_mode=$query_mode, update_mode=$update_mode, package_name=$package_name"
+
     # 执行相应操作
-    if [ -n "$install_mode" ] && [ -n "$package_name" ]; then
+    if [ -n "$install_mode" ]; then
+        if [ -z "$package_name" ]; then
+            print_color "$RED" "错误: 安装操作需要指定包名"
+            exit 1
+        fi
+        
         case $install_mode in
             pacman) install_via_pacman "$package_name" ;;
             aur) install_via_aur "$package_name" ;;
             flatpak) install_via_flatpak "$package_name" ;;
+            generic)
+                print_color "$RED" "错误: 必须指定安装来源 (--pacman, --aur 或 --flatpak)"
+                exit 1
+                ;;
         esac
         exit 0
-    elif [ -n "$remove_mode" ] && [ -n "$package_name" ]; then
+    elif [ -n "$remove_mode" ]; then
+        if [ -z "$package_name" ]; then
+            print_color "$RED" "错误: 卸载操作需要指定包名"
+            exit 1
+        fi
+        
         case $remove_mode in
             pacman) remove_via_pacman "$package_name" ;;
             flatpak) remove_via_flatpak "$package_name" ;;
+            generic)
+                print_color "$RED" "错误: 必须指定卸载来源 (--pacman 或 --flatpak)"
+                exit 1
+                ;;
         esac
         exit 0
     elif [ -n "$query_mode" ]; then
@@ -360,7 +399,7 @@ parse_args() {
             print_color "$RED" "必须指定查询范围: --online 或 --local"
             exit 1
         fi
-        
+
         if [ -z "$query_type" ]; then
             # 如果没有指定查询类型，默认查询所有类型
             case "$query_scope" in
@@ -393,11 +432,11 @@ parse_args() {
             aur) update_aur_packages ;;
             flatpak) update_flatpak_packages ;;
             all) update_all_packages ;;
-            *) update_system ;;
+            generic) update_system ;;
         esac
         exit 0
     fi
-    
+
     # 如果没有指定命令行参数，进入交互模式
     return 1
 }
@@ -1347,22 +1386,22 @@ system_check() {
 main() {
     init
     system_check
-    
+
     # 尝试解析命令行参数
     if parse_args "$@"; then
         # 如果解析成功并执行了命令，直接退出
         exit 0
     fi
-    
+
     # 否则进入交互模式
     install_required_packages
-    
+
     clear
     print_color "$GREEN" "欢迎使用yay+ Version 3"
     print_color "$CYAN" "仓库地址: https://github.com/Colin130716/yay-plus/"
     print_color "$CYAN" "看乐子: https://github.com/qwq9scan114514/yay-s-joke/"
     print_color "$YELLOW" "注意: AUR近期遭受攻击，已添加GitHub镜像作为备用源"
-    
+
     sleep 3
     main_menu
 }
