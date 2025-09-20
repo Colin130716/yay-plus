@@ -7,7 +7,6 @@ readonly PACKAGE_DIR="$HOME/.yay-plus/packages"
 readonly CREATE_LOG_TIME=$(date +'%Y%m%d_%H%M%S')
 readonly AUR_BASE_URL="https://aur.archlinux.org"
 readonly AUR_RPC_URL="$AUR_BASE_URL/rpc/?v=5"
-readonly AUR_GITHUB_MIRROR="https://github.com/archlinux/aur.git"
 
 # 颜色定义
 readonly RED='\033[0;31m'
@@ -22,6 +21,8 @@ DEFAULT_GITHUB_PROXY="1"
 DEFAULT_GO_PROXY="true"
 DEFAULT_NPM_PROXY="true"
 DEFAULT_AUR_SOURCE="aur"
+
+AUR_GITHUB_MIRROR="https://github.com/archlinux/aur.git"
 
 # 初始化函数
 init() {
@@ -59,6 +60,21 @@ load_config() {
     else
         log "配置文件不存在，使用默认配置"
     fi
+
+    case $DEFAULT_GITHUB_PROXY in
+        1)
+            AUR_GITHUB_MIRROR="https://github.akams.cn/https://github.com/archlinux/aur.git"
+            ;;
+        2)
+            AUR_GITHUB_MIRROR="https://gh-proxy.com/https://github.com/archlinux/aur.git"
+            ;;
+        3)
+            AUR_GITHUB_MIRROR="https://ghfile.geekertao.top/https://github.com/archlinux/aur.git"
+            ;;
+        4)
+            AUR_GITHUB_MIRROR="https://gh.llkk.cc/https://github.com/archlinux/aur.git"
+            ;;
+    esac
 }
 
 # 获取配置值
@@ -1022,26 +1038,21 @@ set_proxy() {
                 log "使用GitHub代理: https://github.akams.cn/"
                 sed -i 's#https://github.com/#https://github.akams.cn/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://github.akams.cn/https://raw.githubusercontent.com/#g' PKGBUILD
-                # 添加对GitHub镜像的代理支持
-                sed -i 's#https://github.com/archlinux/aur#https://github.akams.cn/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
                 ;;
             2)
                 log "使用GitHub代理: https://gh-proxy.com/"
                 sed -i 's#https://github.com/#https://gh-proxy.com/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://gh-proxy.com/https://raw.githubusercontent.com/#g' PKGBUILD
-                sed -i 's#https://github.com/archlinux/aur#https://gh-proxy.com/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
                 ;;
             3)
                 log "使用GitHub代理: https://ghfile.geekertao.top/"
                 sed -i 's#https://github.com/#https://ghfile.geekertao.top/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://ghfile.geekertao.top/https://raw.githubusercontent.com/#g' PKGBUILD
-                sed -i 's#https://github.com/archlinux/aur#https://ghfile.geekertao.top/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
                 ;;
             4)
                 log "使用GitHub代理: https://gh.llkk.cc/"
                 sed -i 's#https://github.com/#https://gh.llkk.cc/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://gh.llkk.cc/https://raw.githubusercontent.com/#g' PKGBUILD
-                sed -i 's#https://github.com/archlinux/aur#https://gh.llkk.cc/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
                 ;;
         esac
         return
@@ -1062,25 +1073,21 @@ set_proxy() {
             log "使用GitHub代理: https://github.akams.cn/"
             sed -i 's#https://github.com/#https://github.akams.cn/https://github.com/#g' PKGBUILD
             sed -i 's#https://raw.githubusercontent.com/#https://github.akams.cn/https://raw.githubusercontent.com/#g' PKGBUILD
-            sed -i 's#https://github.com/archlinux/aur#https://github.akams.cn/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
             ;;
         2)
             log "使用GitHub代理: https://gh-proxy.com/"
             sed -i 's#https://github.com/#https://gh-proxy.com/https://github.com/#g' PKGBUILD
             sed -i 's#https://raw.githubusercontent.com/#https://gh-proxy.com/https://raw.githubusercontent.com/#g' PKGBUILD
-            sed -i 's#https://github.com/archlinux/aur#https://gh-proxy.com/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
             ;;
         3)
             log "使用GitHub代理: https://ghfile.geekertao.top/"
             sed -i 's#https://github.com/#https://ghfile.geekertao.top/https://github.com/#g' PKGBUILD
             sed -i 's#https://raw.githubusercontent.com/#https://ghfile.geekertao.top/https://raw.githubusercontent.com/#g' PKGBUILD
-            sed -i 's#https://github.com/archlinux/aur#https://ghfile.geekertao.top/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
             ;;
         4)
             log "使用GitHub代理: https://gh.llkk.cc/"
             sed -i 's#https://github.com/#https://gh.llkk.cc/https://github.com/#g' PKGBUILD
             sed -i 's#https://raw.githubusercontent.com/#https://gh.llkk.cc/https://raw.githubusercontent.com/#g' PKGBUILD
-            sed -i 's#https://github.com/archlinux/aur#https://gh.llkk.cc/https://github.com/archlinux/aur#g' PKGBUILD 2>/dev/null
             ;;
     esac
 }
