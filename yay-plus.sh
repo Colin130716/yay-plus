@@ -240,16 +240,16 @@ Yay+ - 一个（狗屎一样的）AUR Helper，但不只局限于AUR
   -v, --version            显示版本信息
 
 示例:
-  yay-plus -S --pacman firefox     从官方仓库安装Firefox
-  yay-plus -S --aur yay            从AUR安装yay
-  yay-plus -R --pacman firefox     卸载Firefox
-  yay-plus -Q --pacman firefox     查询Firefox信息
-  yay-plus -Q --online --aur firefox 查询AUR云端Firefox信息
-  yay-plus -Q --local --aur        查询所有本地AUR软件包
-  yay-plus -U --aur                更新所有AUR软件包
-  yay-plus -U --all                更新所有软件包
-  yay-plus -L /path/to/package    本地安装包
-  yay-plus -L /path/to/pkg.tar.zst 安装本地包文件
+  yay-plus -S --pacman firefox         从官方仓库安装Firefox
+  yay-plus -S --aur yay                从AUR安装yay
+  yay-plus -R --pacman firefox         卸载Firefox
+  yay-plus -Q --pacman firefox         查询Firefox信息
+  yay-plus -Q --online --aur firefox   查询AUR云端Firefox信息
+  yay-plus -Q --local --aur            查询所有本地AUR软件包
+  yay-plus -U --aur                    更新所有AUR软件包
+  yay-plus -U --all                    更新所有软件包
+  yay-plus -L /path/to/package         本地安装包
+  yay-plus -L /path/to/pkg.tar.zst     安装本地包文件
   yay-plus -L /path/to/file.flatpakref 安装Flatpak引用文件
 EOF
     exit 0
@@ -257,7 +257,7 @@ EOF
 
 # 显示版本信息
 show_version() {
-    echo "Yay+ Version 3"
+    echo "Yay+ Version 3.1.1-Release.fix3"
     exit 0
 }
 
@@ -709,6 +709,7 @@ install_via_aur() {
             set_proxy
             # 不使用--asdeps参数，避免成为孤儿包
             makepkg -si --skippgpcheck --noconfirm
+            main_menu
             ;;
     esac
 }
@@ -899,7 +900,7 @@ update_all_packages() {
 main_menu() {
     cd "$PACKAGE_DIR" || exit 1
     echo "YAY+" | figlet | lolcat
-    echo "Version 3" | figlet | lolcat
+    echo "Version 3.1.1-Release.fix3" | figlet | lolcat
     
     echo "
     1. 安装软件包
