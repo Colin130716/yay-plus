@@ -7,8 +7,8 @@ arch=('any')
 url="https://github.com/Colin130716/yay-plus"
 license=('GPL3')
 depends=('git' 'base-devel' 'wget' 'unzip' 'npm' 'go' 'curl' 'figlet' 'lolcat' 'vim' 'flatpak' 'jq' 'bash')
-source=("https://github.com/Colin130716/yay-plus/raw/master/yay-plus.sh")
-sha256sums=('dc139a0f43cb433bb1298898f309c719f4933dd3bfc976b3fd23720e45e84f5b')
+source=("https://github.com/Colin130716/yay-plus/releases/v3.1.2-Release/yay-plus.sh")
+sha256sums=('405e35f6029a6ea59d6ae29acbaf301923d830ebd1e11240f128c5985717adad')
 
 package() {
     install -Dm755 "$srcdir/yay-plus.sh" "$pkgdir/usr/bin/yay-plus"
