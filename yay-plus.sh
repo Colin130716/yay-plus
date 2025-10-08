@@ -257,7 +257,7 @@ EOF
 
 # 显示版本信息
 show_version() {
-    echo "Yay+ Version 3.1.1-Release.fix3"
+    echo "Yay+ Version 3.1.2-Release"
     exit 0
 }
 
@@ -900,7 +900,7 @@ update_all_packages() {
 main_menu() {
     cd "$PACKAGE_DIR" || exit 1
     echo "YAY+" | figlet | lolcat
-    echo "Version 3.1.1-Release.fix3" | figlet | lolcat
+    echo "Version 3.1.2-Release"
     
     echo "
     1. 安装软件包
