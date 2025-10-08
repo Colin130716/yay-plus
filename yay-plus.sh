@@ -20,6 +20,7 @@ readonly NC='\033[0m' # No Color
 DEFAULT_GITHUB_PROXY="1"
 DEFAULT_GO_PROXY="true"
 DEFAULT_NPM_PROXY="true"
+DEFAULT_KERNEL_ORG_PROXY="true"
 DEFAULT_AUR_SOURCE="aur"
 
 AUR_GITHUB_MIRROR="https://github.com/archlinux/aur.git"
@@ -117,10 +118,13 @@ npm_proxy=$DEFAULT_NPM_PROXY
 
 # AUR源选择 (aur:使用AUR官方, github:使用GitHub镜像)
 aur_source=$DEFAULT_AUR_SOURCE
+
+# kernel.org代理设置 (true:启动代理, false:不启用代理)
+kernel_org_proxy=$DEFAULT_KERNEL_ORG_PROXY
 EOF
     
     print_color "$GREEN" "配置文件已创建: $CONFIG_FILE"
-    print_color "$CYAN" "默认设置: GitHub代理=1, Go代理=true, NPM代理=true, AUR源=aur"
+    print_color "$CYAN" "默认设置: GitHub代理=1, Go代理=true, NPM代理=true, kernel.org代理=true, AUR源=aur"
     print_color "$CYAN" "您可以编辑此文件来自定义默认行为"
 }
 
@@ -201,7 +205,7 @@ install_package() {
 # 显示帮助信息
 show_help() {
     cat << EOF
-Yay+ - AUR 助手增强版
+Yay+ - 一个（狗屎一样的）AUR Helper，但不只局限于AUR
 
 用法:
   yay-plus [选项] [包名]
@@ -229,6 +233,9 @@ Yay+ - AUR 助手增强版
       --flatpak            更新Flatpak软件包
       --all                更新所有软件包 (pacman + AUR + flatpak)
 
+  -L, --local-install <路径> 本地安装
+                          支持: AUR包目录、.pkg.tar.zst包、.flatpakref文件
+
   -h, --help               显示此帮助信息
   -v, --version            显示版本信息
 
@@ -241,6 +248,9 @@ Yay+ - AUR 助手增强版
   yay-plus -Q --local --aur        查询所有本地AUR软件包
   yay-plus -U --aur                更新所有AUR软件包
   yay-plus -U --all                更新所有软件包
+  yay-plus -L /path/to/package    本地安装包
+  yay-plus -L /path/to/pkg.tar.zst 安装本地包文件
+  yay-plus -L /path/to/file.flatpakref 安装Flatpak引用文件
 EOF
     exit 0
 }
@@ -258,6 +268,7 @@ parse_args() {
     local query_mode=""
     local query_scope=""  # 查询范围（online/local）
     local update_mode=""
+    local local_install_path=""
     local package_name=""
     local has_specific_mode=false
     local query_type=""   # 查询类型（pacman/aur/flatpak）
@@ -295,6 +306,16 @@ parse_args() {
             -U|--update)
                 update_mode="generic"
                 shift
+                ;;
+            -L|--local-install)
+                shift
+                if [[ $# -gt 0 && ! $1 =~ ^- ]]; then
+                    local_install_path="$1"
+                    shift
+                else
+                    print_color "$RED" "错误: -L/--local-install 需要指定路径"
+                    exit 1
+                fi
                 ;;
             --pacman)
                 if [ -n "$install_mode" ]; then
@@ -375,10 +396,13 @@ parse_args() {
         esac
     done
 
-    log "解析结果: install_mode=$install_mode, remove_mode=$remove_mode, query_mode=$query_mode, update_mode=$update_mode, package_name=$package_name"
+    log "解析结果: install_mode=$install_mode, remove_mode=$remove_mode, query_mode=$query_mode, update_mode=$update_mode, local_install_path=$local_install_path, package_name=$package_name"
 
     # 执行相应操作
-    if [ -n "$install_mode" ]; then
+    if [ -n "$local_install_path" ]; then
+        local_install "$local_install_path"
+        exit 0
+    elif [ -n "$install_mode" ]; then
         if [ -z "$package_name" ]; then
             print_color "$RED" "错误: 安装操作需要指定包名"
             exit 1
@@ -457,6 +481,157 @@ parse_args() {
     return 1
 }
 
+# 本地安装函数
+local_install() {
+    local path="$1"
+    
+    if [ ! -e "$path" ]; then
+        print_color "$RED" "错误: 路径不存在: $path"
+        exit 1
+    fi
+    
+    log "本地安装: $path"
+    
+    if [ -d "$path" ]; then
+        # 处理目录（AUR包）
+        local_install_aur "$path"
+    elif [ -f "$path" ]; then
+        # 处理文件
+        case "$path" in
+            *.pkg.tar.zst|*.pkg.tar.xz|*.pkg.tar.gz)
+                local_install_package_file "$path"
+                ;;
+            *.flatpakref)
+                local_install_flatpakref "$path"
+                ;;
+            *)
+                print_color "$RED" "错误: 不支持的文件类型: $path"
+                print_color "$YELLOW" "支持的文件类型: .pkg.tar.zst, .pkg.tar.xz, .pkg.tar.gz, .flatpakref"
+                exit 1
+                ;;
+        esac
+    else
+        print_color "$RED" "错误: 无效的路径: $path"
+        exit 1
+    fi
+}
+
+# 本地安装AUR包目录
+local_install_aur() {
+    local dir_path="$1"
+    
+    log "本地安装AUR包: $dir_path"
+    print_color "$CYAN" "检测到AUR包目录，开始构建安装..."
+    
+    cd "$dir_path" || {
+        print_color "$RED" "错误: 无法进入目录: $dir_path"
+        exit 1
+    }
+    
+    if [ ! -f "PKGBUILD" ]; then
+        print_color "$RED" "错误: 目录中未找到PKGBUILD文件，不是有效的AUR包"
+        exit 1
+    fi
+    
+    # 获取包信息
+    local pkgname pkgver pkgrel
+    source PKGBUILD >/dev/null 2>&1
+    
+    if [ -z "$pkgname" ]; then
+        print_color "$RED" "错误: 无法从PKGBUILD解析包信息"
+        exit 1
+    fi
+    
+    # 显示安装信息
+    print_color "$BLUE" ":: 即将安装的AUR包"
+    print_color "$GREEN" "AUR/$pkgname $pkgver-$pkgrel (本地构建)"
+    echo ""
+    
+    # 确认安装
+    read -rp ":: 是否安装？[Y/n] " confirm
+    case "$confirm" in
+        [nN]*) 
+            print_color "$YELLOW" "安装已取消"
+            exit 0
+            ;;
+    esac
+    
+    # 处理依赖
+    process_dependencies
+    
+    set_ghproxy
+    set_proxy
+    
+    # 构建并安装
+    print_color "$CYAN" "开始构建包..."
+    if makepkg -si --skippgpcheck --noconfirm; then
+        print_color "$GREEN" "AUR包安装成功: $pkgname"
+    else
+        print_color "$RED" "AUR包安装失败: $pkgname"
+        exit 1
+    fi
+}
+
+# 本地安装包文件
+local_install_package_file() {
+    local file_path="$1"
+    
+    log "本地安装包文件: $file_path"
+    print_color "$CYAN" "检测到包文件，开始安装..."
+    
+    # 显示文件信息
+    print_color "$BLUE" ":: 即将安装的包文件"
+    print_color "$GREEN" "文件: $(basename "$file_path")"
+    echo ""
+    
+    # 确认安装
+    read -rp ":: 是否安装？[Y/n] " confirm
+    case "$confirm" in
+        [nN]*) 
+            print_color "$YELLOW" "安装已取消"
+            exit 0
+            ;;
+    esac
+    
+    # 使用pacman安装
+    if sudo pacman -U --noconfirm "$file_path"; then
+        print_color "$GREEN" "包文件安装成功: $(basename "$file_path")"
+    else
+        print_color "$RED" "包文件安装失败: $(basename "$file_path")"
+        exit 1
+    fi
+}
+
+# 本地安装Flatpak引用文件
+local_install_flatpakref() {
+    local file_path="$1"
+    
+    log "本地安装Flatpak引用文件: $file_path"
+    print_color "$CYAN" "检测到Flatpak引用文件，开始安装..."
+    
+    # 显示文件信息
+    print_color "$BLUE" ":: 即将安装的Flatpak应用"
+    print_color "$GREEN" "引用文件: $(basename "$file_path")"
+    echo ""
+    
+    # 确认安装
+    read -rp ":: 是否安装？[Y/n] " confirm
+    case "$confirm" in
+        [nN]*) 
+            print_color "$YELLOW" "安装已取消"
+            exit 0
+            ;;
+    esac
+    
+    # 使用flatpak安装
+    if flatpak install -y "$file_path"; then
+        print_color "$GREEN" "Flatpak应用安装成功: $(basename "$file_path")"
+    else
+        print_color "$RED" "Flatpak应用安装失败: $(basename "$file_path")"
+        exit 1
+    fi
+}
+
 # 通过pacman安装
 install_via_pacman() {
     local package="$1"
@@ -530,8 +705,8 @@ install_via_aur() {
             exit 0
             ;;
         *) 
-            set_env "noninteractive"
-            set_proxy "noninteractive"
+            set_ghproxy
+            set_proxy
             # 不使用--asdeps参数，避免成为孤儿包
             makepkg -si --skippgpcheck --noconfirm
             ;;
@@ -732,7 +907,8 @@ main_menu() {
     3. 运行flatpak软件包
     4. 查找软件包
     5. 更新系统
-    6. 退出
+    6. 本地安装
+    7. 退出
     "
     
     read -rp "请输入选项: " choice
@@ -744,7 +920,8 @@ main_menu() {
         3) run_flatpak_package ;;
         4) search_packages ;;
         5) update_system ;;
-        6) 
+        6) local_install_menu ;;
+        7) 
             log "程序退出"
             print_color "$GREEN" "yay+正在退出，感谢使用"
             exit 0
@@ -754,6 +931,60 @@ main_menu() {
             main_menu
             ;;
     esac
+}
+
+# 本地安装菜单
+local_install_menu() {
+    echo "
+    本地安装选项：
+    1. 安装本地AUR包目录
+    2. 安装本地包文件 (.pkg.tar.zst等)
+    3. 安装本地Flatpak引用文件 (.flatpakref)
+    4. 返回主菜单
+    "
+    
+    read -rp "请输入选项: " local_choice
+    log "本地安装菜单选择: $local_choice"
+    
+    case $local_choice in
+        1)
+            read -rp "请输入AUR包目录路径: " aur_dir
+            if [ -n "$aur_dir" ]; then
+                local_install_aur "$aur_dir"
+            else
+                print_color "$RED" "路径不能为空"
+                local_install_menu
+            fi
+            ;;
+        2)
+            read -rp "请输入包文件路径: " pkg_file
+            if [ -n "$pkg_file" ]; then
+                local_install_package_file "$pkg_file"
+            else
+                print_color "$RED" "路径不能为空"
+                local_install_menu
+            fi
+            ;;
+        3)
+            read -rp "请输入Flatpak引用文件路径: " flatpakref_file
+            if [ -n "$flatpakref_file" ]; then
+                local_install_flatpakref "$flatpakref_file"
+            else
+                print_color "$RED" "路径不能为空"
+                local_install_menu
+            fi
+            ;;
+        4)
+            main_menu
+            ;;
+        *)
+            print_color "$RED" "无效的选项"
+            local_install_menu
+            ;;
+    esac
+    
+    read -n 1 -rp "按任意键返回主菜单..."
+    main_menu
 }
 
 # 安装必要的软件包
@@ -894,8 +1125,8 @@ update_aur_packages() {
             # 处理依赖
             process_dependencies
             
-            set_env "noninteractive"
-            set_proxy "noninteractive"
+            set_ghproxy
+            set_proxy
             # 不使用--asdeps参数，避免成为孤儿包
             makepkg -si --skippgpcheck --noconfirm
         else
@@ -963,76 +1194,65 @@ run_flatpak_package() {
     main_menu
 }
 
-# 设置环境变量
-set_env() {
-    local mode="${1:-interactive}"
-    
-    # Go代理设置
-    if [ "$mode" = "noninteractive" ]; then
-        if [ "$DEFAULT_GO_PROXY" = "true" ]; then
-            log "设置Go代理: https://goproxy.cn"
-            export GO111MODULE=on
-            export GOPROXY=https://goproxy.cn
-        fi
-    else
-        read -rp "需要使用go代理下载吗？（代理下载地址：https://goproxy.cn）(y/N): " set_go_proxy
-        if [[ "$set_go_proxy" =~ ^[Yy]$ ]]; then
-            log "设置Go代理: https://goproxy.cn"
-            export GO111MODULE=on
-            export GOPROXY=https://goproxy.cn
-        else
-            read -rp "是否还原为默认代理下载地址？(Y/n): " set_go_proxy_default
-            if [[ ! "$set_go_proxy_default" =~ ^[Nn]$ ]]; then
-                log "还原Go代理: https://proxy.golang.org"
-                export GOPROXY=https://proxy.golang.org
-            fi
-        fi
+# 设置代理
+set_proxy() {
+    # local mode="${1:-interactive}"
+
+    if [ "$DEFAULT_GO_PROXY" = "true" ]; then
+        log "设置Go代理: https://goproxy.cn"
+        export GO111MODULE=on
+        export GOPROXY=https://goproxy.cn
     fi
+    # else
+    #     read -rp "需要使用go代理下载吗？（代理下载地址：https://goproxy.cn）(y/N): " set_go_proxy
+    #     if [[ "$set_go_proxy" =~ ^[Yy]$ ]]; then
+    #         log "设置Go代理: https://goproxy.cn"
+    #         export GO111MODULE=on
+    #         export GOPROXY=https://goproxy.cn
+    #     else
+    #         read -rp "是否还原为默认代理下载地址？(Y/n): " set_go_proxy_default
+    #         if [[ ! "$set_go_proxy_default" =~ ^[Nn]$ ]]; then
+    #             log "还原Go代理: https://proxy.golang.org"
+    #             export GOPROXY=https://proxy.golang.org
+    #         fi
+    #     fi
+    # fi
     
     # NPM代理设置
-    if [ "$mode" = "noninteractive" ]; then
-        if [ "$DEFAULT_NPM_PROXY" = "true" ]; then
-            log "设置NPM代理: https://registry.npmmirror.com"
-            npm config set registry https://registry.npmmirror.com
-            sudo npm config set registry https://registry.npmmirror.com
-        fi
-    else
-        read -rp "需要使用npm代理吗？（代理地址：https://registry.npmmirror.com）(y/N): " set_npm_proxy
-        if [[ "$set_npm_proxy" =~ ^[Yy]$ ]]; then
-            log "设置NPM代理: https://registry.npmmirror.com"
-            npm config set registry https://registry.npmmirror.com
-            sudo npm config set registry https://registry.npmmirror.com
-        else
-            read -rp "是否还原为默认代理下载地址？(Y/n): " set_npm_proxy_default
-            if [[ ! "$set_npm_proxy_default" =~ ^[Nn]$ ]]; then
-                log "还原NPM代理: https://registry.npmjs.org"
-            npm config set registry https://registry.npmjs.org
-            fi
-        fi
+    if [ "$DEFAULT_NPM_PROXY" = "true" ]; then
+        log "设置NPM代理: https://registry.npmmirror.com"
+        npm config set registry https://registry.npmmirror.com
+        sudo npm config set registry https://registry.npmmirror.com
     fi
+    # else
+    #     read -rp "需要使用npm代理吗？（代理地址：https://registry.npmmirror.com）(y/N): " set_npm_proxy
+    #     if [[ "$set_npm_proxy" =~ ^[Yy]$ ]]; then
+    #         log "设置NPM代理: https://registry.npmmirror.com"
+    #         npm config set registry https://registry.npmmirror.com
+    #         sudo npm config set registry https://registry.npmmirror.com
+    #     else
+    #         read -rp "是否还原为默认代理下载地址？(Y/n): " set_npm_proxy_default
+    #         if [[ ! "$set_npm_proxy_default" =~ ^[Nn]$ ]]; then
+    #             log "还原NPM代理: https://registry.npmjs.org"
+    #         npm config set registry https://registry.npmjs.org
+    #         fi
+    #     fi
+    # fi
     
     # Kernel.org镜像替换
-    read -rp "是否需要替换kernel.org镜像为中科大镜像以加速内核下载？(y/N): " set_kernel_mirror
-    if [[ "$set_kernel_mirror" =~ ^[Yy]$ ]]; then
+    if [ "$DEFAULT_KERNEL_ORG_PROXY" = "true" ]; then
         log "替换kernel.org镜像为中科大镜像"
         sed -i 's#https://www.kernel.org/pub/#https://mirrors.ustc.edu.cn/kernel.org/#g' PKGBUILD
         sed -i 's#https://cdn.kernel.org/pub/#https://mirrors.ustc.edu.cn/kernel.org/#g' PKGBUILD
     fi
-    
-    # 查看PKGBUILD
-    read -rp "是否要查看PKGBUILD内容？(y/N): " read_PKGBUILD
-    if [[ "$read_PKGBUILD" =~ ^[Yy]$ ]]; then
-        log "查看PKGBUILD内容"
-        vim PKGBUILD
-    fi
 }
 
-# 设置代理
-set_proxy() {
-    local mode="${1:-interactive}"
+# 设置GitHub代理
+set_ghproxy() {
+    # local mode="${1:-interactive}"
     
-    if [ "$mode" = "noninteractive" ] && [ -n "$DEFAULT_GITHUB_PROXY" ]; then
-        # 非交互模式，使用配置的代理
+    if [ -n "$DEFAULT_GITHUB_PROXY" ]; then
+        # 自动配置Github代理
         case $DEFAULT_GITHUB_PROXY in
             1)
                 log "使用GitHub代理: https://github.akams.cn/"
@@ -1054,42 +1274,44 @@ set_proxy() {
                 sed -i 's#https://github.com/#https://gh.llkk.cc/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://gh.llkk.cc/https://raw.githubusercontent.com/#g' PKGBUILD
                 ;;
+            *)
+                log "未选择GitHub代理，继续安装"
+                ;;
         esac
-        return
     fi
     
-    # 交互模式
-    echo "请选择GitHub代理："
-    echo "1. https://github.akams.cn/（推荐，采用Geo-IP 302重定向其他高速及镜像站）"
-    echo "2. https://gh-proxy.com/（推荐，下载速度快）"
-    echo "3. https://ghfile.geekertao.top/（推荐，速度快）"
-    echo "4. https://gh.llkk.cc/（速度较快）"
-    echo "5. 不使用GitHub代理（不推荐）"
+    # # 交互模式
+    # echo "请选择GitHub代理："
+    # echo "1. https://github.akams.cn/（推荐，采用Geo-IP 302重定向其他高速及镜像站）"
+    # echo "2. https://gh-proxy.com/（推荐，下载速度快）"
+    # echo "3. https://ghfile.geekertao.top/（推荐，速度快）"
+    # echo "4. https://gh.llkk.cc/（速度较快）"
+    # echo "5. 不使用GitHub代理（不推荐）"
     
-    read -r proxy
+    # read -r proxy
     
-    case $proxy in
-        1)
-            log "使用GitHub代理: https://github.akams.cn/"
-            sed -i 's#https://github.com/#https://github.akams.cn/https://github.com/#g' PKGBUILD
-            sed -i 's#https://raw.githubusercontent.com/#https://github.akams.cn/https://raw.githubusercontent.com/#g' PKGBUILD
-            ;;
-        2)
-            log "使用GitHub代理: https://gh-proxy.com/"
-            sed -i 's#https://github.com/#https://gh-proxy.com/https://github.com/#g' PKGBUILD
-            sed -i 's#https://raw.githubusercontent.com/#https://gh-proxy.com/https://raw.githubusercontent.com/#g' PKGBUILD
-            ;;
-        3)
-            log "使用GitHub代理: https://ghfile.geekertao.top/"
-            sed -i 's#https://github.com/#https://ghfile.geekertao.top/https://github.com/#g' PKGBUILD
-            sed -i 's#https://raw.githubusercontent.com/#https://ghfile.geekertao.top/https://raw.githubusercontent.com/#g' PKGBUILD
-            ;;
-        4)
-            log "使用GitHub代理: https://gh.llkk.cc/"
-            sed -i 's#https://github.com/#https://gh.llkk.cc/https://github.com/#g' PKGBUILD
-            sed -i 's#https://raw.githubusercontent.com/#https://gh.llkk.cc/https://raw.githubusercontent.com/#g' PKGBUILD
-            ;;
-    esac
+    # case $proxy in
+    #     1)
+    #         log "使用GitHub代理: https://github.akams.cn/"
+    #         sed -i 's#https://github.com/#https://github.akams.cn/https://github.com/#g' PKGBUILD
+    #         sed -i 's#https://raw.githubusercontent.com/#https://github.akams.cn/https://raw.githubusercontent.com/#g' PKGBUILD
+    #         ;;
+    #     2)
+    #         log "使用GitHub代理: https://gh-proxy.com/"
+    #         sed -i 's#https://github.com/#https://gh-proxy.com/https://github.com/#g' PKGBUILD
+    #         sed -i 's#https://raw.githubusercontent.com/#https://gh-proxy.com/https://raw.githubusercontent.com/#g' PKGBUILD
+    #         ;;
+    #     3)
+    #         log "使用GitHub代理: https://ghfile.geekertao.top/"
+    #         sed -i 's#https://github.com/#https://ghfile.geekertao.top/https://github.com/#g' PKGBUILD
+    #         sed -i 's#https://raw.githubusercontent.com/#https://ghfile.geekertao.top/https://raw.githubusercontent.com/#g' PKGBUILD
+    #         ;;
+    #     4)
+    #         log "使用GitHub代理: https://gh.llkk.cc/"
+    #         sed -i 's#https://github.com/#https://gh.llkk.cc/https://github.com/#g' PKGBUILD
+    #         sed -i 's#https://raw.githubusercontent.com/#https://gh.llkk.cc/https://raw.githubusercontent.com/#g' PKGBUILD
+    #         ;;
+    # esac
 }
 
 # 改进的依赖解析函数
@@ -1170,8 +1392,8 @@ process_dependencies() {
                 process_dependencies
                 
                 # 构建并安装依赖
-                set_env "noninteractive"
-                set_proxy "noninteractive"
+                set_ghproxy
+                set_proxy
                 # 使用--asdeps安装依赖
                 makepkg -si --skippgpcheck --noconfirm --asdeps
                 
@@ -1186,7 +1408,7 @@ process_dependencies() {
 
 # 构建软件包
 build_package() {
-    print_color "$BLUE" "执行: makepkg -si --skippgpcheck --noconfirm"
+    print_color "$BLUE" "执行: makepkg -si --skipppgcheck --noconfirm"
     if makepkg -si --skippgpcheck --noconfirm >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
         log "makepkg成功完成"
         print_color "$GREEN" "makepkg成功完成"
@@ -1331,7 +1553,7 @@ install_from_aur() {
             ;;
     esac
     
-    set_env
+    set_ghproxy
     set_proxy
     
     # 不使用--asdeps安装主包，避免成为孤儿包
