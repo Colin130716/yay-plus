@@ -1,7 +1,7 @@
 # Maintainer: Colin130716 <qsdwin2023@outlook.com>
 pkgname=yay-plus
-pkgver=3.1.1
-pkgrel=3
+pkgver=3.1.2
+pkgrel=1
 pkgdesc="一个更易于中国人使用的AUR Helper"
 arch=('any')
 url="https://github.com/Colin130716/yay-plus"
