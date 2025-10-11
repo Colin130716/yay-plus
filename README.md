@@ -1,5 +1,9 @@
 # yay-plus README v40
 
+![Yay+ Version](https://img.shields.io/github/v/release/Colin130716/yay-plus?display_name=release&style=for-the-badge)
+![Downloads](https://img.shields.io/github/downloads/Colin130716/yay-plus/total?style=for-the-badge)
+![License](https://img.shields.io/github/license/Colin130716/yay-plus?style=for-the-badge)
+
 ## 目录
 
 - [简介](#简介)
@@ -19,7 +23,7 @@
 
 ## 简介
 
-这是一个用于快速下载AUR软件包的脚本，使用Shell脚本语言编写，正在使用PyQt开发GUI版本。[PyQt版](https://github.com/Colin130716/yay-plus_PyQt)已经迁移到新仓库，请前往查看。开源协议：GPLv3。**喜报：官网已配置完成，请见[yayplus.qzz.io](https://yayplus.qzz.io/)。官网使用DeepSeek进行整体框架编写。**
+这是一个用于快速下载AUR软件包的脚本，使用Shell脚本语言编写，正在使用PyQt开发GUI版本。[PyQt版](https://github.com/Colin130716/yay-plus_PyQt)已经迁移到新仓库，请前往查看。开源协议：GPLv3。**喜报：官网已配置完成，请见[yayplus.qzz.io](https://yayplus.qzz.io/)。官网使用DeepSeek进行整体框架编写。新增 IRC 服务器，地址：irc.yayplus.qzz.io（端口38060），规则请见https://github.com/Colin130716/yay-plus/blob/master/Yay+_IRC_Rules.md**
 
 > [!WARNING]
 > 不要拿各种非Arch-Based系统来试，禁止因此问题提Issue。
