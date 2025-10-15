@@ -148,6 +148,35 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# 获取AUR包的实际Git仓库信息
+get_aur_package_info() {
+    local package="$1"
+    local aur_info
+    aur_info=$(curl -s "$AUR_RPC_URL&type=info&arg[]=$package")
+    
+    if echo "$aur_info" | grep -q '"ResultCount":1'; then
+        local pkgname=$(echo "$aur_info" | jq -r ".results[0].Name" 2>/dev/null)
+        local urlpath=$(echo "$aur_info" | jq -r ".results[0].URLPath" 2>/dev/null)
+        
+        if [ -n "$pkgname" ] && [ "$pkgname" != "null" ]; then
+            # 从URLPath中提取实际的仓库名
+            # URLPath格式通常是: cgit/aur.git/snapshot/package-name.tar.gz
+            # 或者: cgit/aur.git/snapshot/actual-repo-name.tar.gz
+            if [ -n "$urlpath" ] && [ "$urlpath" != "null" ]; then
+                # 提取实际的仓库名称
+                local actual_repo=$(basename "$urlpath" .tar.gz)
+                echo "$pkgname|$actual_repo"
+                return 0
+            else
+                echo "$pkgname|$pkgname"
+                return 0
+            fi
+        fi
+    fi
+    echo "$package|$package"
+    return 1
+}
+
 # 克隆AUR包函数
 clone_aur_package() {
     local package="$1"
@@ -159,32 +188,40 @@ clone_aur_package() {
     # 根据配置选择AUR源
     local aur_source="${3:-$DEFAULT_AUR_SOURCE}"
     
+    # 获取AUR包的实际信息
+    local package_info
+    package_info=$(get_aur_package_info "$package")
+    local actual_package=$(echo "$package_info" | cut -d'|' -f1)
+    local actual_repo=$(echo "$package_info" | cut -d'|' -f2)
+    
+    log "包信息: 请求包=$package, 实际包=$actual_package, 仓库=$actual_repo"
+    
     if [ "$aur_source" = "github" ]; then
-        log "从GitHub镜像克隆AUR包: $package"
-        print_color "$CYAN" "从GitHub镜像克隆AUR包: $package"
+        log "从GitHub镜像克隆AUR包: $actual_repo (原请求: $package)"
+        print_color "$CYAN" "从GitHub镜像克隆AUR包: $actual_repo"
         
-        if ! git clone --branch "$package" --single-branch "$AUR_GITHUB_MIRROR" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
+        if ! git clone --branch "$actual_repo" --single-branch "$AUR_GITHUB_MIRROR" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
             log "从GitHub镜像克隆失败，尝试使用AUR官方源"
             print_color "$YELLOW" "从GitHub镜像克隆失败，尝试使用AUR官方源"
             
             # 回退到AUR官方源
-            if ! git clone "$AUR_BASE_URL/$package.git" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
-                log "git clone失败: $package"
+            if ! git clone "$AUR_BASE_URL/$actual_repo.git" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
+                log "git clone失败: $package (尝试仓库: $actual_repo)"
                 print_color "$RED" "git clone失败，请检查网络连接或软件包名称"
                 return 1
             fi
         fi
     else
-        log "从AUR官方克隆AUR包: $package"
-        print_color "$CYAN" "从AUR官方克隆AUR包: $package"
+        log "从AUR官方克隆AUR包: $actual_repo (原请求: $package)"
+        print_color "$CYAN" "从AUR官方克隆AUR包: $actual_repo"
         
-        if ! git clone "$AUR_BASE_URL/$package.git" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
+        if ! git clone "$AUR_BASE_URL/$actual_repo.git" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
             log "从AUR官方克隆失败，尝试使用GitHub镜像"
             print_color "$YELLOW" "从AUR官方克隆失败，尝试使用GitHub镜像"
             
             # 回退到GitHub镜像
-            if ! git clone --branch "$package" --single-branch "$AUR_GITHUB_MIRROR" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
-                log "git clone失败: $package"
+            if ! git clone --branch "$actual_repo" --single-branch "$AUR_GITHUB_MIRROR" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
+                log "git clone失败: $package (尝试仓库: $actual_repo)"
                 print_color "$RED" "git clone失败，请检查网络连接或软件包名称"
                 return 1
             fi
@@ -205,7 +242,7 @@ install_package() {
 # 显示帮助信息
 show_help() {
     cat << EOF
-Yay+ - 一个（狗屎一样的）AUR Helper，但不只局限于AUR
+Yay+ - 一个 AUR Helper，但不只局限于 AUR
 
 用法:
   yay-plus [选项] [包名]
@@ -257,7 +294,7 @@ EOF
 
 # 显示版本信息
 show_version() {
-    echo "Yay+ Version 3.1.2-Release"
+    echo "Yay+ Version 3.1.2-Release.fix1"
     exit 0
 }
 
@@ -672,15 +709,23 @@ install_via_aur() {
     local package="$1"
     log "命令行安装AUR包: $package"
     
-    # 使用新的克隆函数
-    if ! clone_aur_package "$package" "$package"; then
+    # 获取AUR包的实际信息
+    local package_info
+    package_info=$(get_aur_package_info "$package")
+    local actual_package=$(echo "$package_info" | cut -d'|' -f1)
+    local actual_repo=$(echo "$package_info" | cut -d'|' -f2)
+    
+    log "安装AUR包: 请求包=$package, 实际包=$actual_package, 仓库=$actual_repo"
+    
+    # 使用实际的仓库名进行克隆
+    if ! clone_aur_package "$package" "$actual_repo"; then
         exit 1
     fi
     
-    cd "$package" || exit 1
+    cd "$actual_repo" || exit 1
     
     if [ ! -f "PKGBUILD" ]; then
-        log "PKGBUILD不存在: $package"
+        log "PKGBUILD不存在: $actual_repo"
         print_color "$RED" "PKGBUILD不存在，可能不是有效的AUR包"
         exit 1
     fi
@@ -1098,16 +1143,34 @@ update_aur_packages() {
     local aur_packages
     aur_packages=$(pacman -Qm | awk '{print $1}')
     
+    # 用于跟踪已经处理过的仓库
+    local processed_repos=""
+    
     for pkg in $aur_packages; do
         print_color "$CYAN" "检查 $pkg 更新..."
         
         local local_version
         local_version=$(pacman -Q "$pkg" | awk '{print $2}')
         
+        # 获取AUR包的实际信息
+        local package_info
+        package_info=$(get_aur_package_info "$pkg")
+        local actual_package=$(echo "$package_info" | cut -d'|' -f1)
+        local actual_repo=$(echo "$package_info" | cut -d'|' -f2)
+        
         local aur_info
-        aur_info=$(curl -s "$AUR_RPC_URL&type=info&arg[]=$pkg")
+        aur_info=$(curl -s "$AUR_RPC_URL&type=info&arg[]=$actual_package")
         local latest_version
         latest_version=$(echo "$aur_info" | jq -r ".results[0].Version" 2>/dev/null)
+        
+        # 检查是否已经处理过这个仓库
+        if echo "$processed_repos" | grep -q "$actual_repo"; then
+            print_color "$YELLOW" "跳过 $pkg (仓库 $actual_repo 已处理)"
+            continue
+        fi
+        
+        # 添加到已处理列表
+        processed_repos="$processed_repos $actual_repo"
         
         if [ "$latest_version" != "null" ] && [ "$local_version" != "$latest_version" ]; then
             print_color "$YELLOW" "发现更新: $pkg ($local_version -> $latest_version)"
@@ -1116,12 +1179,12 @@ update_aur_packages() {
                 continue
             fi
             
-            # 使用新的克隆函数下载并构建更新
-            if ! clone_aur_package "$pkg" "$pkg"; then
+            # 使用实际的仓库名进行克隆
+            if ! clone_aur_package "$pkg" "$actual_repo"; then
                 continue
             fi
             
-            cd "$pkg" || continue
+            cd "$actual_repo" || continue
             
             # 处理依赖
             process_dependencies
@@ -1514,22 +1577,29 @@ install_from_pacman() {
 }
 
 # 从AUR安装
-install_from_aur() {
-    log "从AUR安装: $aur_source"
-    print_color "$CYAN" "正在尝试从AUR安装..."
+install_via_aur() {
+    local package="$1"
+    log "命令行安装AUR包: $package"
     
-    # 使用新的克隆函数
-    if ! clone_aur_package "$aur_source" "$aur_source"; then
-        main_menu
-        return
+    # 获取AUR包的实际信息
+    local package_info
+    package_info=$(get_aur_package_info "$package")
+    local actual_package=$(echo "$package_info" | cut -d'|' -f1)
+    local actual_repo=$(echo "$package_info" | cut -d'|' -f2)
+    
+    log "安装AUR包: 请求包=$package, 实际包=$actual_package, 仓库=$actual_repo"
+    
+    # 使用实际的仓库名进行克隆
+    if ! clone_aur_package "$package" "$actual_repo"; then
+        exit 1
     fi
     
-    cd "$aur_source" || return 1
+    cd "$actual_repo" || exit 1
     
     if [ ! -f "PKGBUILD" ]; then
-        log "PKGBUILD不存在: $aur_source"
+        log "PKGBUILD不存在: $actual_repo"
         print_color "$RED" "PKGBUILD不存在，可能不是有效的AUR包"
-        main_menu
+        exit 1
     fi
     
     # 处理依赖
@@ -1540,8 +1610,8 @@ install_from_aur() {
     source PKGBUILD >/dev/null 2>&1
     
     # 显示安装信息
-    print_color "$BLUE" ":: 即将安装的AUR包"
-    print_color "$GREEN" "AUR/$pkgname $pkgver-$pkgrel"
+    echo ":: 即将安装的AUR包"
+    echo "AUR/$pkgname $pkgver-$pkgrel"
     echo ""
     
     # 确认安装
@@ -1549,17 +1619,18 @@ install_from_aur() {
     case "$confirm" in
         [nN]*) 
             print_color "$YELLOW" "安装已取消"
+            exit 0
+            ;;
+        *) 
+            set_ghproxy
+            set_proxy
+            # 不使用--asdeps参数，避免成为孤儿包
+            makepkg -si --skippgpcheck --noconfirm
             main_menu
-            return
             ;;
     esac
-    
-    set_ghproxy
-    set_proxy
-    
-    # 不使用--asdeps安装主包，避免成为孤儿包
-    makepkg -si --skippgpcheck --noconfirm
 }
+
 
 # 从flatpak安装
 install_from_flatpak() {
