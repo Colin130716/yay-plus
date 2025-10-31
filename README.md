@@ -1,4 +1,4 @@
-# yay-plus README v40
+# yay-plus README v40.1
 
 ![Yay+ Version](https://img.shields.io/github/v/release/Colin130716/yay-plus?display_name=release&style=for-the-badge)
 ![Downloads](https://img.shields.io/github/downloads/Colin130716/yay-plus/total?style=for-the-badge)
@@ -13,8 +13,6 @@
 - [开发者信息](#开发者信息)
 - [初衷](#初衷)
 - [友链](#友情链接)
-- [yay+大事祭](#大事祭)
-- [旧版代码展示](#旧版代码展示)
 
 ---
 
@@ -23,7 +21,11 @@
 
 ## 简介
 
-这是一个用于快速下载AUR软件包的脚本，使用Shell脚本语言编写，正在使用PyQt开发GUI版本。[PyQt版](https://github.com/Colin130716/yay-plus_PyQt)已经迁移到新仓库，请前往查看。开源协议：GPLv3。**喜报：官网已配置完成，请见[yayplus.qzz.io](https://yayplus.qzz.io/)。官网使用DeepSeek进行整体框架编写。新增 IRC 服务器，地址：irc.yayplus.qzz.io（端口38060），规则请见https://github.com/Colin130716/yay-plus/blob/master/Yay+_IRC_Rules.md**
+这是一个用于快速下载AUR软件包的脚本，使用Shell脚本语言编写，正在使用PyQt开发GUI版本。[PyQt版](https://github.com/Colin130716/yay-plus_PyQt)已经迁移到新仓库，请前往查看。开源协议：GPLv3。
+
+**喜报：官网已配置完成，请见[yayplus.qzz.io](https://yayplus.qzz.io/)。官网使用DeepSeek进行整体框架编写。**
+
+**新增 IRC 服务器，地址：irc.yayplus.qzz.io（不启用 TLS/SSL 使用 38060 端口，启用 TLS/SSL 使用 30080 端口），规则请见[https://github.com/Colin130716/yay-plus/blob/master/Yay+_IRC_Rules.md](https://github.com/Colin130716/yay-plus/blob/master/Yay+_IRC_Rules.md)**
 
 > [!WARNING]
 > 不要拿各种非Arch-Based系统来试，禁止因此问题提Issue。
@@ -87,194 +89,3 @@ chmod +x <git clone到的路径>/yay-plus.sh
 
 ---
 
-## 大事祭
-
-**2024/8/23 12:37 从asSK那里接手了一个赛博文盲**
-
-**2024/8/25 17:02 写出了yay+第一版（当时还叫aur.sh）**
-
-**2024/8/26 10:39 正式改名为yay+**
-
-**2024/8/26 23:57 准备开始写GUI版，Shell版同时更新**
-
-**2024/8/27 17:55 yay-s-joke仓库正式诞生**
-
-**2024/8/31 21:29 asSK准备对我的yay+仓库发起袭击![image](https://github.com/user-attachments/assets/7a9826e9-9f12-48ca-99f4-3a4830c62642)**
-
-**2024/9/6 22:32 在写完两个窗口（不到）后GUI版暂停更新，继续更新Shell版**
-
-**2024/10/7 1:40 yay+的Shell版本最终版完成**
-
-**2024/10/7 4:17 大事祭写完（暂时的）**
-
-**2024/10/7 23:43 翻到了以前的aur.sh**
-
-**2024/10/9 1:30 准备月考，但是睡不着，于是又更新了“亿点点”新模块**
-
-**2024/10/9 20:58 又加了一个检测root的功能（真是最后一版了（bushi**
-
-**2024/10/11 19:47 yay+ wiki完成**
-
-**2024/10/13 0:39 加入了使用flatpak安装的功能，代码突破400行**
-
----
-
-## 旧版代码展示
-
-```bash
-#!/bin/sh
-
-
-
-install_package() {
-
-    sudo pacman -Syyu
-
-    sudo pacman -S --noconfirm "$1"
-
-}
-
-
-
-install_packages() {
-
-    install_package git
-
-    install_package base-devel
-
-    install_package wget
-
-    install_package unzip
-
-    install_package npm
-
-    install_package go
-
-}
-
-
-
-set_env() {
-
-    echo "需要使用go代理吗？(y/n)"
-
-    read set_go_proxy
-
-    if [ "$set_go_proxy" == "y" ]; then
-
-        export GO111MODULE=on
-
-        export GOPROXY=https://goproxy.cn
-
-    fi
-
-    echo "需要使用npm代理吗？(y/n)"
-
-    read set_npm_proxy
-
-    if [ "$set_npm_proxy" == "y" ]; then
-
-    npm config set registry https://registry.npmmirror.com
-
-}
-
-
-
-download_dialog() {
-
-    echo "下载dialog（TUI工具）时需要使用代理吗？(y/n)"
-
-    read use_proxy
-
-    if [ "$use_proxy" == "y" ]; then
-
-        proxy_url="httpa://fastgit.cc/"
-
-        wget "$proxy_url"https://github.com/Colin130716/AUR_Quick_Download_for_Chinese/raw/master/dialog
-
-    else
-
-        wget https://github.com/Colin130716/AUR_Quick_Download_for_Chinese/raw/master/dialog
-
-    fi
-
-    sudo mv dialog /usr/bin/dialog
-
-    sudo rm -rf dialog
-
-}
-
-
-
-clone_aur_repo() {
-
-    aur_source=$(dialog --inputbox "请输入你想要下载项目的aur名称：" 0 0 --output-fd 1)
-
-    cd ~/Gitdir
-
-    sudo rm -rf "$aur_source"
-
-    git clone https://aur.archlinux.org/"$aur_source".git
-
-    cd "$aur_source"
-
-}
-
-
-
-set_proxy() {
-
-    options=("https://fastgit.cc/" "https://mirror.ghproxy.com/（备用，下载速度较慢）" "https://gh.api.99988866.xyz/（备用2,不稳定）" "不使用Github代理（不推荐）")
-
-    choice=$(dialog --title "请选择代理地址" 0 0 0 $(options[@]) --output-fd 1)
-
-    case $choice in
-
-        "https://fastgit.cc/")
-
-            sed -i 's/https:\/\/github.com\//https:\/\/fastgit.cc\/https:\/\/github.com\//g' PKGBUILD
-
-            ;;
-
-        "https://mirror.ghproxy.com/（备用，下载速度较慢）")
-
-            sed -i 's/https:\/\/github.com\//https:\/\/mirror.ghproxy.com\/https:\/\/github.com\//g' PKGBUILD
-
-            ;;
-
-        "https://gh.api.99988866.xyz/（备用2,不稳定）")
-
-            sed -i 's/https:\/\/github.com\//https:\/\/gh.api.99988866.xyz\/https:\/\/github.com\//g' PKGBUILD
-
-            ;;
-
-        "不使用Github代理")
-
-            ;;
-
-    esac
-
-}
-
-
-
-build_package() {
-
-    makepkg -si
-
-}
-
-
-
-install_packages
-
-set_env
-
-download_dialog
-
-clone_aur_repo
-
-set_proxy
-
-build_package
-```
