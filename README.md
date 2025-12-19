@@ -11,6 +11,8 @@
 > [!NOTE]
 > 本项目和 Yay（由 Jguer 及其他贡献者开发的一个 AUR Helper，[Github](https://github.com/Jguer/yay)）没有关联，只是取名时恰巧想到了这个名字而已，请不要混淆。
 
+官网请见：[https://yayplus.qzz.io/](https://yayplus.qzz.io/)
+
 ## 使用方法
 
 <details open>
