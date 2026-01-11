@@ -17,7 +17,7 @@
 
 <details open>
 
-<summary>1. 通过预先打包好的包安装（推荐）<summary>
+<summary>1. 通过预先打包好的包安装（推荐）</summary>
 
 1. 从 Github Releases 页面下载预编译好的 Yay+ 包（请见 [Releases 链接](https://github.com/Colin130716/yay-plus/releases)）。
 
@@ -29,7 +29,7 @@
 
 <details>
 
-<summary>2. 直接运行仓库中的 Shell 脚本<summary>
+<summary>2. 直接运行仓库中的 Shell 脚本</summary>
 
 1. 从 Github Releases 页面下载最新版的 Yay+ （这是一个指向**最新版**脚本的 [链接](https://github.com/Colin130716/yay-plus/releases/latest/download/yay-plus.sh)）。
 
