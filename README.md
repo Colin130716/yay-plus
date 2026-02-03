@@ -1,282 +1,62 @@
-# yay-plus README v37
+# yay-plus README v42.1
 
-## 目录
-
-- [简介](#简介)
-- [使用方法（Shell版）](#使用方法)
-- [注意事项](#你需要注意)
-- [开发者信息](#开发者信息)
-- [初衷](#初衷)
-- [友链](#友情链接)
-- [yay+大事祭](#大事祭)
-- [旧版代码展示](#旧版代码展示)
+![Yay+ Version](https://img.shields.io/github/v/release/Colin130716/yay-plus?display_name=release&style=for-the-badge)
+![Downloads](https://img.shields.io/github/downloads/Colin130716/yay-plus/total?style=for-the-badge)
+![License](https://img.shields.io/github/license/Colin130716/yay-plus?style=for-the-badge)
 
 ## 简介
 
-这是一个用于快速下载AUR软件包的脚本，使用Shell脚本语言编写，正在使用PyQt开发GUI版本。[PyQt版](https://github.com/Colin130716/yay-plus_PyQt)已经迁移到新仓库，请前往查看。开源协议：GPLv3。
+本项目（yay-plus，也称 yay+/Yay+）是一个 **可以快速管理 ArchLinux 中软件包（包括但不限于：从 Pacman 软件包源及从 AUR 中自行编译的包）及 Flatpak包** 的 Shell 脚本。
+
+> [!NOTE]
+> 本项目和 Yay（由 Jguer 及其他贡献者开发的一个 AUR Helper，[Github](https://github.com/Jguer/yay)）没有关联，只是取名时恰巧想到了这个名字而已，请不要混淆。
 
 > [!WARNING]
-> 不要拿各种非Arch-Based系统来试，禁止因此问题提Issue。
-> **提问前请看[提问的智慧](https://github.com/ryanhanwu/How-To-Ask-Questions-The-Smart-Way/blob/main/README-zh_CN.md)**。
+> 如果非必要，请使用命令行参数进行操作，不要使用交互式操作，交互式操作目前已经比命令行参数缺失了部分功能。
 
-![icon](https://github.com/Colin130716/yay-plus_PyQt/blob/master/icons/256x256.png)
+官网请见：[https://yayplus.qzz.io/](https://yayplus.qzz.io/)
 
 ## 使用方法
 
-### 安装步骤
+<details open>
+
+<summary>1. 通过预先打包好的包安装（推荐）</summary>
+
+1. 从 Github Releases 页面下载预编译好的 Yay+ 包（请见 [Releases 链接](https://github.com/Colin130716/yay-plus/releases)）。
+
+2. 使用 `[sudo] pacman -U <package name>` 以安装预打包好的 Yay+ 包。
+
+3. 运行 'yay-plus' 以开始使用。
+
+</details>
+
+<details>
+
+<summary>2. 直接运行仓库中的 Shell 脚本</summary>
+
+1. 从 Github Releases 页面下载最新版的 Yay+ （这是一个指向**最新版**脚本的 [链接](https://github.com/Colin130716/yay-plus/releases/latest/download/yay-plus.sh)）。
+
+2. 通过以下命令运行 Yay+：
 
 ```bash
-git clone https://github.com/Colin130716/yay-plus.git
-chmod +x <git clone到的路径>/yay-plus.sh
-<git clone到的路径>/yay-plus.sh
+chmod +x /path/to/yay-plus.sh
+/path/to/yay-plus.sh
 ```
 
-### 进阶用法（仅限zsh | bash）
-
-1. 添加以下行到 `.zshrc` 或 `.bashrc` 中：
-
-```bash
-alias yay+="<你的yay-plus.sh所在位置>/yay-plus.sh"
-```
-
-2. 重新加载配置文件：
-
-```bash
-source ~/.zshrc
-```
-
-或者
-
-```bash
-source ~/.bashrc
-```
-
----
-
-## 你需要注意
-
-1. 本脚本仅适用于Arch Linux及其发行版系统，其他系统无法正常运行（为了防止有某些**用Ubuntu这类系统来试，加入了系统检测功能）。
-
-2. 运行时请不要尝试使用root权限运行，不然会导致makepkg阶段出现错误。
-
----
-
-## 本软件使用CodeGeeX编写部分实现代码
-
----
-
-## 开发者信息
-
-1. Colin130716：真正的开发者，这个程序60%全是他一个字一个字敲出来的(别问剩下的40%是谁，问就是ai写的，不然你以为我上面写了个“本软件使用CodeGeeX编写部分实现代码”干什么的)
-
-2. asSK(L1nry)：废物一个，你永远也想不到他下一句会蹦出什么逆天发言（给小白推荐arch的就是他！！！）
-
-3. FlySkyPigg-az：那位小白，仓库吉祥物（？
-
----
-
-## 初衷
-
-这个东西制作的初衷是我有个朋友，给小白推荐arch，那个小白还真装了，然后这都不会那都不会，以至于flatpak，hmcl，jdk，qq，fcitx5都是我们帮他装的，我们实在不希望他不会合理运用aur这个好用的东西，所以我决定写这个脚本。（asSK：arch用户不会用aur就挺难崩的）
-
-## 友情链接
-
-[**yay-s-joke**](https://github.com/qwq9scan114514/yay-s-joke) 这是asSK和我（colin）一起建立的仓库，可以在这里讲一些你遇到的笑话。
-
----
-
-**注：这篇README.md大部分是asSK写的（asSK：colin你……）（Colin130716：你不是自愿的吗（（（）**
-
----
-
-## 大事祭
-
-**2024/8/23 12:37 从asSK那里接手了一个赛博文盲**
-
-**2024/8/25 17:02 写出了yay+第一版（当时还叫aur.sh）**
-
-**2024/8/26 10:39 正式改名为yay+**
-
-**2024/8/26 23:57 准备开始写GUI版，Shell版同时更新**
-
-**2024/8/27 17:55 yay-s-joke仓库正式诞生**
-
-**2024/8/31 21:29 asSK准备对我的yay+仓库发起袭击![image](https://github.com/user-attachments/assets/7a9826e9-9f12-48ca-99f4-3a4830c62642)**
-
-**2024/9/6 22:32 在写完两个窗口（不到）后GUI版暂停更新，继续更新Shell版**
-
-**2024/10/7 1:40 yay+的Shell版本最终版完成**
-
-**2024/10/7 4:17 大事祭写完（暂时的）**
-
-**2024/10/7 23:43 翻到了以前的aur.sh**
-
-**2024/10/9 1:30 准备月考，但是睡不着，于是又更新了“亿点点”新模块**
-
-**2024/10/9 20:58 又加了一个检测root的功能（真是最后一版了（bushi**
-
-**2024/10/11 19:47 yay+ wiki完成**
-
-**2024/10/13 0:39 加入了使用flatpak安装的功能，代码突破400行**
-
----
-
-## 旧版代码展示
-
-```bash
-#!/bin/sh
-
-
-
-install_package() {
-
-    sudo pacman -Syyu
-
-    sudo pacman -S --noconfirm "$1"
-
-}
-
-
-
-install_packages() {
-
-    install_package git
-
-    install_package base-devel
-
-    install_package wget
-
-    install_package unzip
-
-    install_package npm
-
-    install_package go
-
-}
-
-
-
-set_env() {
-
-    echo "需要使用go代理吗？(y/n)"
-
-    read set_go_proxy
-
-    if [ "$set_go_proxy" == "y" ]; then
-
-        export GO111MODULE=on
-
-        export GOPROXY=https://goproxy.cn
-
-    fi
-
-    echo "需要使用npm代理吗？(y/n)"
-
-    read set_npm_proxy
-
-    if [ "$set_npm_proxy" == "y" ]; then
-
-    npm config set registry https://registry.npmmirror.com
-
-}
-
-
-
-download_dialog() {
-
-    echo "下载dialog（TUI工具）时需要使用代理吗？(y/n)"
-
-    read use_proxy
-
-    if [ "$use_proxy" == "y" ]; then
-
-        proxy_url="httpa://fastgit.cc/"
-
-        wget "$proxy_url"https://github.com/Colin130716/AUR_Quick_Download_for_Chinese/raw/master/dialog
-
-    else
-
-        wget https://github.com/Colin130716/AUR_Quick_Download_for_Chinese/raw/master/dialog
-
-    fi
-
-    sudo mv dialog /usr/bin/dialog
-
-    sudo rm -rf dialog
-
-}
-
-
-
-clone_aur_repo() {
-
-    aur_source=$(dialog --inputbox "请输入你想要下载项目的aur名称：" 0 0 --output-fd 1)
-
-    cd ~/Gitdir
-
-    sudo rm -rf "$aur_source"
-
-    git clone https://aur.archlinux.org/"$aur_source".git
-
-    cd "$aur_source"
-
-}
-
-
-
-set_proxy() {
-
-    options=("https://fastgit.cc/" "https://mirror.ghproxy.com/（备用，下载速度较慢）" "https://gh.api.99988866.xyz/（备用2,不稳定）" "不使用Github代理（不推荐）")
-
-    choice=$(dialog --title "请选择代理地址" 0 0 0 $(options[@]) --output-fd 1)
-
-    case $choice in
-
-        "https://fastgit.cc/")
-
-            sed -i 's/https:\/\/github.com\//https:\/\/fastgit.cc\/https:\/\/github.com\//g' PKGBUILD
-
-            ;;
-
-        "https://mirror.ghproxy.com/（备用，下载速度较慢）")
-
-            sed -i 's/https:\/\/github.com\//https:\/\/mirror.ghproxy.com\/https:\/\/github.com\//g' PKGBUILD
-
-            ;;
-
-        "https://gh.api.99988866.xyz/（备用2,不稳定）")
-
-            sed -i 's/https:\/\/github.com\//https:\/\/gh.api.99988866.xyz\/https:\/\/github.com\//g' PKGBUILD
-
-            ;;
-
-        "不使用Github代理")
-
-            ;;
-
-    esac
-
-}
-
-
-
-build_package() {
-
-    makepkg -si
-
-}
-
-
-
-install_packages
-
-set_env
-
-download_dialog
-
-clone_aur_repo
-
-set_proxy
-
-build_package
-```
+</details>
+
+## 功能
+
+| 功能 | 描述 | 命令 | 对比 |
+| --- | --- | --- | --- |
+| 安装软件包 | 从 **Pacman 软件包源、AUR、Flatpak** 中安装  | `yay-plus -S --<安装方式，可选 pacman / aur / flatpak> <package name>` | `yay -S <package name>` |
+| 卸载软件包 | 从 **Pacman、Flatpak** 中卸载  | `yay-plus -R --<卸载方式，可选 pacman / flatpak> <package name>` | `yay -R <package name>` |
+| 搜索软件包 | 在 **Pacman 软件包源、AUR、Flatpak** 中搜索  | `yay-plus -Q --<搜索方式，可选 pacman / aur / flatpak> --<搜索状态，可选 online / local> <package name>` | `yay -Ss <package name>` |
+| 更新软件包 | 更新 **Pacman 软件包源、AUR、Flatpak** 中的软件包  | `yay-plus -U --<更新方式，可选 all / pacman / aur / flatpak> <package name>` | `yay -Syyyu` |
+| 本地安装 | 从本地文件安装软件包  | `yay-plus -L /path/to/<AUR 包目录 或 .pkg.tar.* 文件 或 .flatpakref 文件>` | `yay -U <package name>` |
+
+## Todos
+
+- [ ] 修改配置文件更新逻辑，方便降级
+- [ ] 修改拉取 AUR 快照失败的问题
+- [ ] 修改命令行参数逻辑使其更符合 Pacman 的参数逻辑
