@@ -1,4 +1,4 @@
-# yay-plus README v42.1
+# yay-plus README v42.2
 
 ![Yay+ Version](https://img.shields.io/github/v/release/Colin130716/yay-plus?display_name=release&style=for-the-badge)
 ![Downloads](https://img.shields.io/github/downloads/Colin130716/yay-plus/total?style=for-the-badge)
@@ -6,7 +6,7 @@
 
 ## 简介
 
-本项目（yay-plus，也称 yay+/Yay+）是一个 **可以快速管理 ArchLinux 中软件包（包括但不限于：从 Pacman 软件包源及从 AUR 中自行编译的包）及 Flatpak包** 的 Shell 脚本。
+本项目（yay-plus，也称 yay+/Yay+）是一个 **可以快速管理 Arch Linux 中软件包（包括但不限于：从 Pacman 软件包源及从 AUR 中自行编译的包）及 Flatpak包** 的 Shell 脚本。
 
 > [!NOTE]
 > 本项目和 Yay（由 Jguer 及其他贡献者开发的一个 AUR Helper，[Github](https://github.com/Jguer/yay)）没有关联，只是取名时恰巧想到了这个名字而已，请不要混淆。
@@ -55,8 +55,6 @@ chmod +x /path/to/yay-plus.sh
 | 更新软件包 | 更新 **Pacman 软件包源、AUR、Flatpak** 中的软件包  | `yay-plus -U --<更新方式，可选 all / pacman / aur / flatpak> <package name>` | `yay -Syyyu` |
 | 本地安装 | 从本地文件安装软件包  | `yay-plus -L /path/to/<AUR 包目录 或 .pkg.tar.* 文件 或 .flatpakref 文件>` | `yay -U <package name>` |
 
-## Todos
+## 捐赠
 
-- [ ] 修改配置文件更新逻辑，方便降级
-- [ ] 修改拉取 AUR 快照失败的问题
-- [ ] 修改命令行参数逻辑使其更符合 Pacman 的参数逻辑
+Monero: 41y7ND2zCKvFkBGi6mjTbYNgtDpWgsGMW4oehikzbkxhfe8W92FujgA2tb7SQ1MwgvdcNDyqeQpSWLJF6nDgo9JvE26Vwz9
