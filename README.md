@@ -52,7 +52,7 @@ chmod +x /path/to/yay-plus.sh
 | 安装软件包 | 从 **Pacman 软件包源、AUR、Flatpak** 中安装  | `yay-plus -S --<安装方式，可选 pacman / aur / flatpak> <package name>` | `yay -S <package name>` |
 | 卸载软件包 | 从 **Pacman、Flatpak** 中卸载  | `yay-plus -R --<卸载方式，可选 pacman / flatpak> <package name>` | `yay -R <package name>` |
 | 搜索软件包 | 在 **Pacman 软件包源、AUR、Flatpak** 中搜索  | `yay-plus -Q --<搜索方式，可选 pacman / aur / flatpak> --<搜索状态，可选 online / local> <package name>` | `yay -Ss <package name>` |
-| 更新软件包 | 更新 **Pacman 软件包源、AUR、Flatpak** 中的软件包  | `yay-plus -U --<更新方式，可选 all / pacman / aur / flatpak> <package name>` | `yay -Syyyu` |
+| 更新软件包 | 更新 **Pacman 软件包源、AUR、Flatpak** 中的软件包  | `yay-plus -U --<更新方式，可选 all / pacman / aur / flatpak>` | `yay -Syyyu` |
 | 本地安装 | 从本地文件安装软件包  | `yay-plus -L /path/to/<AUR 包目录 或 .pkg.tar.* 文件 或 .flatpakref 文件>` | `yay -U <package name>` |
 
 ## 捐赠
