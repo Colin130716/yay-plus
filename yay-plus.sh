@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================================
-# Yay+ v3.2.0
+# Yay+ v3.2.0.1
 # =====================================================================
 # 用法请见 yay-plus -h 或 yay-plus --help 
 #
@@ -52,12 +52,18 @@ DEFAULT_AUR_CACHE_TTL="30"
 NOCONFIRM="false"
 # 强制刷新 AUR 缓存: true→忽略 TTL，强制重新拉取
 FORCE_AUR_REFRESH="false"
+# 自更新通道: release / beta / dev
+DEFAULT_SELF_UPDATE_CHANNEL="release"
 # 配置文件格式版本（用于自动升级旧配置）
-CONFIG_VERSION="6"
+CONFIG_VERSION="7"
 # AUR 包版本缓存文件，批量缓存避免逐包 RPC 调用
 readonly AUR_CACHE_FILE="$HOME/.yay-plus/aur-packages.cache"
+# 自更新版本 JSON 地址
+readonly VERSION_JSON_URL="https://yayplus.qzz.io/version.json"
+# 自更新状态文件（记录上次检查的版本，避免重复提示）
+readonly SELF_UPDATE_STATE="$HOME/.yay-plus/.self-update"
 # 脚本版本号
-YAY_PLUS_VERSION="3.2.0"
+YAY_PLUS_VERSION="3.2.0.1"
 # GitHub 上 AUR 的镜像仓库地址（load_config 根据代理设置动态替换）
 AUR_GITHUB_MIRROR="https://github.com/archlinux/aur.git"
 
@@ -124,7 +130,8 @@ update_config() {
     local old_aur_source=$(get_config_value "aur_source" "$DEFAULT_AUR_SOURCE")
     local old_debug_mode=$(get_config_value "debug_mode" "$DEFAULT_DEBUG_MODE")
     local old_aur_cache_ttl=$(get_config_value "aur_cache_ttl" "$DEFAULT_AUR_CACHE_TTL")
-    log "读取旧配置: github_proxy=$old_github_proxy, npm_proxy=$old_npm_proxy, kernel_org_proxy=$old_kernel_org_proxy, aur_source=$old_aur_source, debug_mode=$old_debug_mode, aur_cache_ttl=$old_aur_cache_ttl"
+    local old_self_update_channel=$(get_config_value "self_update_channel" "$DEFAULT_SELF_UPDATE_CHANNEL")
+    log "读取旧配置: github_proxy=$old_github_proxy, npm_proxy=$old_npm_proxy, kernel_org_proxy=$old_kernel_org_proxy, aur_source=$old_aur_source, debug_mode=$old_debug_mode, aur_cache_ttl=$old_aur_cache_ttl, self_update_channel=$old_self_update_channel"
     # 创建新的配置文件
     cat > "$CONFIG_FILE" << EOF
 # Yay+ 配置文件
@@ -154,6 +161,9 @@ debug_mode=$old_debug_mode
 # AUR缓存有效期（分钟，默认30；设为0则每次检查都刷新）
 aur_cache_ttl=$old_aur_cache_ttl
 
+# 自更新通道 (release: 稳定版, beta: 测试版, dev: 开发版)
+self_update_channel=$old_self_update_channel
+
 # 配置文件版本
 config_version=$CONFIG_VERSION
 EOF
@@ -175,6 +185,7 @@ load_config() {
         DEFAULT_KERNEL_ORG_PROXY=$(get_config_value "kernel_org_proxy" "$DEFAULT_KERNEL_ORG_PROXY")
         DEFAULT_DEBUG_MODE=$(get_config_value "debug_mode" "$DEFAULT_DEBUG_MODE")
         DEFAULT_AUR_CACHE_TTL=$(get_config_value "aur_cache_ttl" "$DEFAULT_AUR_CACHE_TTL")
+        DEFAULT_SELF_UPDATE_CHANNEL=$(get_config_value "self_update_channel" "$DEFAULT_SELF_UPDATE_CHANNEL")
         CONFIG_VERSION=$(get_config_value "config_version" "$CONFIG_VERSION")
     else
         log "配置文件不存在，使用默认配置"
@@ -248,6 +259,9 @@ debug_mode=$DEFAULT_DEBUG_MODE
 
 # AUR缓存有效期（分钟，默认30；设为0则每次检查都刷新）
 aur_cache_ttl=$DEFAULT_AUR_CACHE_TTL
+
+# 自更新通道 (release: 稳定版, beta: 测试版, dev: 开发版)
+self_update_channel=$DEFAULT_SELF_UPDATE_CHANNEL
 
 # 配置文件版本
 config_version=$CONFIG_VERSION
@@ -631,6 +645,8 @@ show_help() {
     echo -e "    ${YELLOW}--confirm${NC}              需要确认提示（默认行为）"
     echo -e "    ${YELLOW}--first-use${NC}            安装必要依赖并配置源（首次使用）"
     echo -e "    ${YELLOW}--history${NC} [N]          查看最近 N 次操作记录（默认10）"
+    echo -e "    ${YELLOW}--self-update${NC} [通道]   检查并更新 Yay+ 自身"
+    echo -e "                                 通道: ${CYAN}release${NC}(默认)/beta/dev"
     echo ""
     echo -e "${CYAN}示例:${NC}"
     echo -e "    ${YELLOW}yay-plus -Sp${NC} firefox chromium      ${GREEN}# 从官方仓库安装${NC} (组合形式)"
@@ -642,6 +658,8 @@ show_help() {
     echo -e "    ${YELLOW}yay-plus -Ua --aur-refresh${NC}         ${GREEN}# 强制刷新缓存后更新AUR包${NC}"
     echo -e "    ${YELLOW}yay-plus -L${NC} /path/to/pkg.tar.zst   ${GREEN}# 安装本地包文件${NC}"
     echo -e "    ${YELLOW}yay-plus -Ca${NC}                       ${RED}# 仅清除AUR缓存${NC} (组合形式)"
+    echo -e "    ${YELLOW}yay-plus --self-update${NC}             ${GREEN}# 检查Yay+自身更新${NC}"
+    echo -e "    ${YELLOW}yay-plus --self-update beta${NC}        ${GREEN}# 检查beta通道更新${NC}"
     exit 0
 }
 
@@ -858,6 +876,17 @@ parse_args() {
                     _hist_n="10"
                 fi
                 show_history "$_hist_n"
+                exit 0
+                ;;
+            --self-update)
+                shift
+                local _su_channel="${1:-}"
+                if [[ "$_su_channel" =~ ^(release|beta|dev)$ ]]; then
+                    shift
+                else
+                    _su_channel=""
+                fi
+                self_update "$_su_channel"
                 exit 0
                 ;;
             -o|--online)
@@ -1717,9 +1746,8 @@ get_cached_aur_version() {
 
 # ---------------------------------------------------------------------------
 # update_aur_packages — 检查并更新所有 AUR 包
-#   流程: 检查缓存 → 必要时刷新 → 对比版本 → 列出更新 → 确认 → 构建
-#   不再逐包打印检查进度，仅在最后列出需要更新的包
-#   注意: 同名不同 PackageBase 的包（如 -git/-bin）只处理一次
+#   流程: 检查缓存 → 刷新 → 对比版本 → PackageBase 去重 → 列出 → 构建
+#   共享同一 PackageBase 的包（如 dotnet-*-bin 系列）只构建一次
 # ---------------------------------------------------------------------------
 update_aur_packages() {
     # 检查/刷新缓存
@@ -1737,6 +1765,7 @@ update_aur_packages() {
     # 第一步：收集所有本地版本，同时找出缓存未命中的包
     local -A local_versions
     local -A cached_versions
+    local -A pkg_to_pkgbase   # pkgname → PackageBase（去重用）
     local missing_pkgs=()
 
     while IFS= read -r pkg; do
@@ -1754,7 +1783,7 @@ update_aur_packages() {
         fi
     done <<< "$aur_packages"
 
-    # 第二步：对缓存未命中的包做补充批量查询（而非逐个 RPC）
+    # 第二步：对缓存未命中的包做补充批量查询，同时提取 PackageBase
     if [ ${#missing_pkgs[@]} -gt 0 ]; then
         print_color "$CYAN" "正在补充查询 ${#missing_pkgs[@]} 个缓存未命中的包..."
         local miss_idx=0 miss_total=${#missing_pkgs[@]}
@@ -1768,24 +1797,28 @@ update_aur_packages() {
             done
             local miss_json
             miss_json=$(curl -s "$AUR_RPC_URL/info?${miss_args#&}")
+            # 提取 Name|Version|PackageBase，三字段便于后续去重
             local miss_results
-            miss_results=$(echo "$miss_json" | jq -r '.results[]? | "\(.Name)|\(.Version)"' 2>/dev/null)
+            miss_results=$(echo "$miss_json" | jq -r '.results[]? | "\(.Name)|\(.Version)|\(.PackageBase)"' 2>/dev/null)
             if [ -n "$miss_results" ]; then
                 while IFS= read -r line; do
-                    local mn mv
+                    local mn mv mp
                     mn=$(echo "$line" | cut -d'|' -f1)
                     mv=$(echo "$line" | cut -d'|' -f2)
-                    [ -n "$mn" ] && [ -n "$mv" ] && cached_versions["$mn"]="$mv"
+                    mp=$(echo "$line" | cut -d'|' -f3)
+                    if [ -n "$mn" ] && [ -n "$mv" ]; then
+                        cached_versions["$mn"]="$mv"
+                        # 记录 PackageBase（为空时回退到包名自身）
+                        pkg_to_pkgbase["$mn"]="${mp:-$mn}"
+                    fi
                 done <<< "$miss_results"
             fi
             miss_idx="$miss_batch_end"
         done
     fi
 
-    # 第三步：对比版本，生成更新列表
-    local updates_list=""
-    local total_updates=0
-    local update_choices=()
+    # 第三步：对比版本，生成更新包列表（尚未去重）
+    local -a update_choices=()
 
     while IFS= read -r pkg; do
         local local_version="${local_versions[$pkg]}"
@@ -1793,19 +1826,50 @@ update_aur_packages() {
         local latest_version="${cached_versions[$pkg]}"
 
         if [ -n "$latest_version" ] && [ "$local_version" != "$latest_version" ]; then
-            updates_list="$updates_list$((total_updates + 1)). $pkg $local_version -> $latest_version\n"
-            total_updates=$((total_updates + 1))
             update_choices+=("$pkg")
         fi
     done <<< "$aur_packages"
 
-    if [ "$total_updates" -eq 0 ]; then
+    if [ ${#update_choices[@]} -eq 0 ]; then
         print_color "$GREEN" "所有 AUR 包均已是最新版本"
         return 0
     fi
 
+    # 第四步：按 PackageBase 去重，同一仓库只构建一次
+    local -A base_to_pkgs       # PackageBase → "pkg1, pkg2, ..."
+    local -A base_to_version    # PackageBase → "old → new"（取第一个包的版本）
+    local -a unique_bases=()    # 有序的唯一 PackageBase 列表
+
+    for pkg in "${update_choices[@]}"; do
+        # 获取 PackageBase：优先使用第二步批量查询的结果，否则回退到包名
+        local base="${pkg_to_pkgbase[$pkg]:-$pkg}"
+        if [ -z "${base_to_pkgs[$base]}" ]; then
+            unique_bases+=("$base")
+            base_to_pkgs["$base"]="$pkg"
+            base_to_version["$base"]="${local_versions[$pkg]} -> ${cached_versions[$pkg]}"
+        else
+            base_to_pkgs["$base"]="${base_to_pkgs[$base]}, $pkg"
+        fi
+    done
+
+    # 第五步：显示去重后的更新列表（分组格式）
+    local updates_list=""
+    local idx=1
+    for base in "${unique_bases[@]}"; do
+        local pkgs="${base_to_pkgs[$base]}"
+        local ver="${base_to_version[$base]}"
+        if [ "$pkgs" = "$base" ]; then
+            # 单包仓库：直接显示包名
+            updates_list="$updates_list${idx}. $base $ver\n"
+        else
+            # 多包子仓库：显示仓库名及包含的子包
+            updates_list="$updates_list${idx}. $base ($pkgs) $ver\n"
+        fi
+        idx=$((idx + 1))
+    done
+
     echo ""
-    print_color "$YELLOW" "发现以下 AUR 包可更新 (共 ${total_updates} 个):"
+    print_color "$YELLOW" "发现以下 AUR 包可更新 (共 ${#update_choices[@]} 个子包，${#unique_bases[@]} 个仓库):"
     echo -e "$updates_list"
 
     if ! confirm_action "是否更新以上所有软件包？[Y/n]: "; then
@@ -1813,20 +1877,24 @@ update_aur_packages() {
         return 0
     fi
 
-    print_color "$CYAN" "正在更新所有选中的软件包..."
+    print_color "$CYAN" "正在更新 ${#unique_bases[@]} 个仓库..."
 
-    for i in "${!update_choices[@]}"; do
-        local pkg_to_update="${update_choices[i]}"
-        print_color "$CYAN" "正在更新 $pkg_to_update..."
+    # 第六步：按唯一仓库构建（每个仓库只 build 一次）
+    for base in "${unique_bases[@]}"; do
+        local pkgs_in_base="${base_to_pkgs[$base]}"
+        print_color "$CYAN" "正在更新 $base (包含: $pkgs_in_base)..."
+
+        # 通过 AUR RPC 获取精确的仓库名（PackageBase 可能 ≠ 包名）
         local package_info_update
-        package_info_update=$(get_aur_package_info "$pkg_to_update")
+        package_info_update=$(get_aur_package_info "$base")
         local actual_package_update=$(echo "$package_info_update" | cut -d'|' -f1)
         local actual_repo_update=$(echo "$package_info_update" | cut -d'|' -f2)
         # 防御 AUR 限速导致 info 返回空
-        [ -z "$actual_package_update" ] && actual_package_update="$pkg_to_update"
-        [ -z "$actual_repo_update" ] && actual_repo_update="$pkg_to_update"
-        if ! clone_aur_package "$pkg_to_update" "$actual_repo_update"; then
-            print_color "$RED" "克隆 $pkg_to_update 失败，跳过"
+        [ -z "$actual_package_update" ] && actual_package_update="$base"
+        [ -z "$actual_repo_update" ] && actual_repo_update="$base"
+
+        if ! clone_aur_package "$base" "$actual_repo_update"; then
+            print_color "$RED" "克隆 $base 失败，跳过"
             continue
         fi
         local _update_saved_dir="$PWD"
@@ -1835,9 +1903,9 @@ update_aur_packages() {
         set_ghproxy
         set_proxy
         if ! makepkg -si --skippgpcheck --noconfirm; then
-            print_color "$RED" "更新 $pkg_to_update 失败"
+            print_color "$RED" "更新 $base 失败"
         else
-            print_color "$GREEN" "更新 $pkg_to_update 成功"
+            print_color "$GREEN" "更新 $base 完成 (子包: $pkgs_in_base)"
         fi
         cd "$_update_saved_dir" || continue
     done
@@ -1854,6 +1922,129 @@ update_flatpak_packages() {
 }
 
 
+# ==================== 自更新 ====================
+
+# ---------------------------------------------------------------------------
+# self_update — 检查并更新 yay-plus 自身
+#   参数: $1=通道名(可选, release/beta/dev, 默认取配置或 release)
+#   流程:
+#     1. 从 VERSION_JSON_URL 拉取版本信息
+#     2. 解析指定通道的 version/filename
+#     3. 空 version → 无更新
+#     4. 与本地状态文件对比，相同 → 已是最新
+#     5. 构造 GitHub 代理 URL 并下载
+#     6. sudo pacman -U 安装
+#     7. 更新本地状态文件
+# ---------------------------------------------------------------------------
+self_update() {
+    local channel="${1:-$DEFAULT_SELF_UPDATE_CHANNEL}"
+    channel="${channel:-release}"
+
+    print_color "$CYAN" "正在检查 Yay+ 自身更新 (通道: $channel)..."
+
+    # 拉取 version.json（主 URL + GitHub proxy 回退）
+    local ver_json
+    ver_json=$(curl -s --connect-timeout 8 "$VERSION_JSON_URL" 2>/dev/null)
+
+    # 检测是否为有效 JSON（Cloudflare 挑战会返回 HTML）
+    if [ -z "$ver_json" ] || echo "$ver_json" | grep -q '<\(!DOCTYPE\|html\)'; then
+        log "主 URL 返回非 JSON，尝试 GitHub 代理回退" "WARN"
+        # 构造 GitHub raw 回退 URL
+        local fallback_url="https://raw.githubusercontent.com/Colin130716/yay-plus/master/version.json"
+        local proxy_url="$fallback_url"
+        case $DEFAULT_GITHUB_PROXY in
+            1) proxy_url="https://github.akams.cn/${fallback_url}" ;;
+            2) proxy_url="https://gh-proxy.com/${fallback_url}" ;;
+            3) proxy_url="https://ghfile.geekertao.top/${fallback_url}" ;;
+            4) proxy_url="https://gh.llkk.cc/${fallback_url}" ;;
+        esac
+        print_color "$YELLOW" "主版本源不可用，尝试代理: $proxy_url"
+        ver_json=$(curl -s --connect-timeout 10 "$proxy_url" 2>/dev/null)
+    fi
+
+    # 最终校验
+    if [ -z "$ver_json" ] || ! echo "$ver_json" | jq -e '.release' >/dev/null 2>&1; then
+        print_color "$RED" "无法获取版本信息，请检查网络连接或稍后重试"
+        return 1
+    fi
+
+    # 解析指定通道
+    local remote_version remote_filename remote_date
+    remote_version=$(echo "$ver_json" | jq -r ".${channel}.version // empty" 2>/dev/null)
+    remote_filename=$(echo "$ver_json" | jq -r ".${channel}.filename // empty" 2>/dev/null)
+    remote_date=$(echo "$ver_json" | jq -r ".${channel}.date // empty" 2>/dev/null)
+
+    if [ -z "$remote_version" ] || [ "$remote_version" = "null" ]; then
+        print_color "$GREEN" "当前 ($channel 通道) 暂无更新"
+        return 0
+    fi
+
+    # 检查本地状态：如果已记录此版本则跳过
+    if [ -f "$SELF_UPDATE_STATE" ]; then
+        local last_seen
+        last_seen=$(grep "^${channel}=" "$SELF_UPDATE_STATE" 2>/dev/null | cut -d'=' -f2)
+        if [ "$last_seen" = "$remote_version" ]; then
+            print_color "$GREEN" "Yay+ 已是最新版本 ($remote_version)"
+            return 0
+        fi
+    fi
+
+    # 显示更新信息
+    echo ""
+    print_color "$YELLOW" "发现 Yay+ 新版本:"
+    echo -e "  通道:   ${channel}"
+    echo -e "  版本:   ${remote_version}"
+    echo -e "  日期:   ${remote_date:-未知}"
+    echo -e "  文件:   ${remote_filename}"
+    echo ""
+
+    if ! confirm_action "是否下载并安装此更新？[Y/n]: "; then
+        print_color "$YELLOW" "已取消更新"
+        # 记录已看到的版本（避免重复提示）
+        mkdir -p "$(dirname "$SELF_UPDATE_STATE")"
+        echo "${channel}=${remote_version}" > "$SELF_UPDATE_STATE"
+        return 0
+    fi
+
+    # 构造下载 URL：<代理前缀>https://github.com/.../releases/<version>/download/<filename>
+    local github_url="https://github.com/Colin130716/yay-plus/releases/download/${remote_version}/${remote_filename}"
+    local download_url="$github_url"
+
+    # 应用 GitHub 代理
+    case $DEFAULT_GITHUB_PROXY in
+        1) download_url="https://github.akams.cn/${github_url}" ;;
+        2) download_url="https://gh-proxy.com/${github_url}" ;;
+        3) download_url="https://ghfile.geekertao.top/${github_url}" ;;
+        4) download_url="https://gh.llkk.cc/${github_url}" ;;
+    esac
+
+    print_color "$CYAN" "正在下载: $download_url"
+    local tmp_pkg="/tmp/${remote_filename}"
+
+    if ! curl -L -o "$tmp_pkg" "$download_url"; then
+        # 代理失败时尝试直连
+        print_color "$YELLOW" "代理下载失败，尝试直连..."
+        if ! curl -L -o "$tmp_pkg" "$github_url"; then
+            print_color "$RED" "下载失败，请检查网络连接"
+            return 1
+        fi
+    fi
+
+    print_color "$CYAN" "正在安装..."
+    if sudo pacman -U --noconfirm "$tmp_pkg"; then
+        print_color "$GREEN" "Yay+ 更新成功: $remote_version"
+        # 记录已更新的版本
+        mkdir -p "$(dirname "$SELF_UPDATE_STATE")"
+        echo "${channel}=${remote_version}" > "$SELF_UPDATE_STATE"
+        rm -f "$tmp_pkg"
+        print_color "$YELLOW" "请重新启动脚本以使用新版本"
+    else
+        print_color "$RED" "安装失败，请手动安装: $tmp_pkg"
+        return 1
+    fi
+}
+
+
 # ==================== 代理与环境 ====================
 
 # ---------------------------------------------------------------------------
@@ -1863,7 +2054,7 @@ update_flatpak_packages() {
 # ---------------------------------------------------------------------------
 first_use() {
     log "首次使用，自动安装依赖"
-    sudo pacman -S --noconfirm --needed base-devel git flatpak npm nodejs
+    sudo pacman -S --noconfirm --needed base-devel git flatpak npm nodejs jq
     log "设置flatpak源"
     sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
     read -rp "是否要更换flathub源为中科大源？（Y/n）: " use_mirror
@@ -1978,6 +2169,13 @@ clean_aur() {
         rm -f "$AUR_CACHE_FILE"
         print_color "$GREEN" "  ✓ 已清除 AUR 版本缓存: $AUR_CACHE_FILE"
         log "已删除 AUR 版本缓存"
+    fi
+
+    # 清除自更新状态
+    if [ -f "$SELF_UPDATE_STATE" ]; then
+        rm -f "$SELF_UPDATE_STATE"
+        print_color "$GREEN" "  ✓ 已清除自更新状态"
+        log "已删除自更新状态文件"
     fi
 
     print_color "$GREEN" "AUR缓存清除完成"

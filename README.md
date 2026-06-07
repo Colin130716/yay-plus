@@ -1,4 +1,4 @@
-# yay-plus README v42.2
+# yay-plus README v42.2.1
 
 ![Yay+ Version](https://img.shields.io/github/v/release/Colin130716/yay-plus?display_name=release&style=for-the-badge)
 ![Downloads](https://img.shields.io/github/downloads/Colin130716/yay-plus/total?style=for-the-badge)
@@ -39,6 +39,10 @@
 2. 通过以下命令运行 Yay+：
 
 ```bash
+# 安装必要依赖
+[sudo] pacman -S base-devel git flatpak npm nodejs jq
+
+# 运行
 chmod +x /path/to/yay-plus.sh
 /path/to/yay-plus.sh
 ```
@@ -54,6 +58,14 @@ chmod +x /path/to/yay-plus.sh
 | 搜索软件包 | 在 **Pacman 软件包源、AUR、Flatpak** 中搜索  | `yay-plus -Q --<搜索方式，可选 pacman / aur / flatpak> --<搜索状态，可选 online / local> <package name>` | `yay -Ss <package name>` |
 | 更新软件包 | 更新 **Pacman 软件包源、AUR、Flatpak** 中的软件包  | `yay-plus -U --<更新方式，可选 all / pacman / aur / flatpak>` | `yay -Syyyu` |
 | 本地安装 | 从本地文件安装软件包  | `yay-plus -L /path/to/<AUR 包目录 或 .pkg.tar.* 文件 或 .flatpakref 文件>` | `yay -U <package name>` |
+
+## 当前命名规则
+
+| 类别 | 规则 | 示例 | 包版本 |
+| --- | --- | --- | --- |
+| 正式版 | `版本号 + -Release` | `Yay+ v3.2.0-Release` | `1:3.2.0-1` |
+| 开发版 | `版本号 + -Dev<第几个版本>` | `Yay+ v3.2.0-Dev1` | `2:3.2.0-1` |
+| 测试版 | `版本号 + -Beta<第几个版本>` | `Yay+ v3.2.0-Beta1` | `3:3.2.0-1` |
 
 ## 捐赠
 
