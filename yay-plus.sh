@@ -1979,6 +1979,16 @@ self_update() {
         return 0
     fi
 
+    # 规范化版本号比较：去除 v 前缀和 -后缀，提取纯数字版本
+    local local_ver="${YAY_PLUS_VERSION#v}"
+    local remote_normalized="${remote_version#v}"
+    remote_normalized="${remote_normalized%%-*}"
+
+    if [ "$local_ver" = "$remote_normalized" ]; then
+        print_color "$GREEN" "Yay+ 已是最新版本 ($YAY_PLUS_VERSION)"
+        return 0
+    fi
+
     # 检查本地状态：如果已记录此版本则跳过
     if [ -f "$SELF_UPDATE_STATE" ]; then
         local last_seen
