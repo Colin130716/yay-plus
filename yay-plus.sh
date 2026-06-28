@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================================
-# Yay+ v3.2.0.1
+# Yay+ v3.2.0.2
 # =====================================================================
 # 用法请见 yay-plus -h 或 yay-plus --help 
 #
@@ -55,15 +55,17 @@ FORCE_AUR_REFRESH="false"
 # 自更新通道: release / beta / dev
 DEFAULT_SELF_UPDATE_CHANNEL="release"
 # 配置文件格式版本（用于自动升级旧配置）
-CONFIG_VERSION="7"
+CONFIG_VERSION="8"
 # AUR 包版本缓存文件，批量缓存避免逐包 RPC 调用
 readonly AUR_CACHE_FILE="$HOME/.yay-plus/aur-packages.cache"
+# AUR RPC 请求重试次数（0=不重试，默认 3 即最多重试 3 次，共 4 次尝试）
+DEFAULT_AUR_RETRY="3"
 # 自更新版本 JSON 地址
 readonly VERSION_JSON_URL="https://yayplus.qzz.io/version.json"
 # 自更新状态文件（记录上次检查的版本，避免重复提示）
 readonly SELF_UPDATE_STATE="$HOME/.yay-plus/.self-update"
 # 脚本版本号
-YAY_PLUS_VERSION="3.2.0.1"
+YAY_PLUS_VERSION="3.2.0.2"
 # GitHub 上 AUR 的镜像仓库地址（load_config 根据代理设置动态替换）
 AUR_GITHUB_MIRROR="https://github.com/archlinux/aur.git"
 
@@ -84,6 +86,21 @@ init() {
     check_and_create_config
     # 加载配置文件
     load_config
+
+    # 检测可用的 JS 包管理器（npm/yarn 为 optdepends）
+    HAS_NPM="false"
+    HAS_YARN="false"
+    if command -v npm &>/dev/null && npm --version &>/dev/null 2>&1; then
+        HAS_NPM="true"
+        log "检测到 npm $(npm --version 2>/dev/null)"
+    fi
+    if command -v yarn &>/dev/null && yarn --version &>/dev/null 2>&1; then
+        HAS_YARN="true"
+        log "检测到 yarn $(yarn --version 2>/dev/null)"
+    fi
+    if [ "$HAS_NPM" = "false" ] && [ "$HAS_YARN" = "false" ]; then
+        log "未检测到 npm 或 yarn，跳过 JS 包管理器镜像配置"
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -131,17 +148,18 @@ update_config() {
     local old_debug_mode=$(get_config_value "debug_mode" "$DEFAULT_DEBUG_MODE")
     local old_aur_cache_ttl=$(get_config_value "aur_cache_ttl" "$DEFAULT_AUR_CACHE_TTL")
     local old_self_update_channel=$(get_config_value "self_update_channel" "$DEFAULT_SELF_UPDATE_CHANNEL")
-    log "读取旧配置: github_proxy=$old_github_proxy, npm_proxy=$old_npm_proxy, kernel_org_proxy=$old_kernel_org_proxy, aur_source=$old_aur_source, debug_mode=$old_debug_mode, aur_cache_ttl=$old_aur_cache_ttl, self_update_channel=$old_self_update_channel"
+    local old_aur_retry=$(get_config_value "aur_retry" "$DEFAULT_AUR_RETRY")
+    log "读取旧配置: github_proxy=$old_github_proxy, npm_proxy=$old_npm_proxy, kernel_org_proxy=$old_kernel_org_proxy, aur_source=$old_aur_source, debug_mode=$old_debug_mode, aur_cache_ttl=$old_aur_cache_ttl, self_update_channel=$old_self_update_channel, aur_retry=$old_aur_retry"
     # 创建新的配置文件
     cat > "$CONFIG_FILE" << EOF
 # Yay+ 配置文件
 # 此文件用于设置 Yay+ 的默认行为
 
 # GitHub代理设置 (空:每次询问, 1-5:使用对应代理)
-# 1: https://github.akams.cn/ (推荐)
-# 2: https://gh-proxy.com/ (推荐，下载速度快)
-# 3: https://ghfile.geekertao.top/ (推荐，速度快)
-# 4: https://gh.llkk.cc/ (速度较快)
+# 1: https://github.akams.cn/
+# 2: https://gh-proxy.com/
+# 3: https://gh.dpik.top/
+# 4: https://gh.llkk.cc/
 # 5: 不使用GitHub代理 (不推荐)
 github_proxy=$old_github_proxy
 
@@ -163,6 +181,9 @@ aur_cache_ttl=$old_aur_cache_ttl
 
 # 自更新通道 (release: 稳定版, beta: 测试版, dev: 开发版)
 self_update_channel=$old_self_update_channel
+
+# AUR RPC 请求重试次数（0=不重试，默认3次重试）
+aur_retry=$old_aur_retry
 
 # 配置文件版本
 config_version=$CONFIG_VERSION
@@ -186,6 +207,7 @@ load_config() {
         DEFAULT_DEBUG_MODE=$(get_config_value "debug_mode" "$DEFAULT_DEBUG_MODE")
         DEFAULT_AUR_CACHE_TTL=$(get_config_value "aur_cache_ttl" "$DEFAULT_AUR_CACHE_TTL")
         DEFAULT_SELF_UPDATE_CHANNEL=$(get_config_value "self_update_channel" "$DEFAULT_SELF_UPDATE_CHANNEL")
+        DEFAULT_AUR_RETRY=$(get_config_value "aur_retry" "$DEFAULT_AUR_RETRY")
         CONFIG_VERSION=$(get_config_value "config_version" "$CONFIG_VERSION")
     else
         log "配置文件不存在，使用默认配置"
@@ -200,7 +222,7 @@ load_config() {
             AUR_GITHUB_MIRROR="https://gh-proxy.com/https://github.com/archlinux/aur.git"
             ;;
         3)
-            AUR_GITHUB_MIRROR="https://ghfile.geekertao.top/https://github.com/archlinux/aur.git"
+            AUR_GITHUB_MIRROR="https://gh.dpik.top/https://github.com/archlinux/aur.git"
             ;;
         4)
             AUR_GITHUB_MIRROR="https://gh.llkk.cc/https://github.com/archlinux/aur.git"
@@ -237,10 +259,10 @@ create_default_config() {
 # 此文件用于设置 Yay+ 的默认行为
 
 # GitHub代理设置 (空:每次询问, 1-5:使用对应代理)
-# 1: https://github.akams.cn/ (推荐)
-# 2: https://gh-proxy.com/ (推荐，下载速度快)
-# 3: https://ghfile.geekertao.top/ (推荐，速度快)
-# 4: https://gh.llkk.cc/ (速度较快)
+# 1: https://github.akams.cn/
+# 2: https://gh-proxy.com/
+# 3: https://gh.dpik.top/
+# 4: https://gh.llkk.cc/
 # 5: 不使用GitHub代理 (不推荐)
 github_proxy=$DEFAULT_GITHUB_PROXY
 
@@ -262,6 +284,9 @@ aur_cache_ttl=$DEFAULT_AUR_CACHE_TTL
 
 # 自更新通道 (release: 稳定版, beta: 测试版, dev: 开发版)
 self_update_channel=$DEFAULT_SELF_UPDATE_CHANNEL
+
+# AUR RPC 请求重试次数（0=不重试，默认3次重试）
+aur_retry=$DEFAULT_AUR_RETRY
 
 # 配置文件版本
 config_version=$CONFIG_VERSION
@@ -353,7 +378,14 @@ command_exists() {
 # ---------------------------------------------------------------------------
 get_aur_package_info_json() {
     local package="$1"
-    local aur_json=$(curl -s "$AUR_RPC_URL/info?arg[]=$package")
+    local aur_json
+    local retry=0
+    while [ $retry -le "$DEFAULT_AUR_RETRY" ]; do
+        aur_json=$(curl -s --connect-timeout 10 --max-time 30 "$AUR_RPC_URL/info?arg[]=$package")
+        [ -n "$aur_json" ] && break
+        ((retry++))
+        [ $retry -le "$DEFAULT_AUR_RETRY" ] && sleep 2
+    done
     log "接收到的json：$aur_json" "INFO" "nostdout"
     echo "$aur_json"
 }
@@ -369,7 +401,13 @@ search_aur_package() {
     local package="$1"
     log "AUR RPC搜索: $package"
     local search_result
-    search_result=$(curl -s "$AUR_RPC_URL/search/$package?by=name")
+    local retry=0
+    while [ $retry -le "$DEFAULT_AUR_RETRY" ]; do
+        search_result=$(curl -s --connect-timeout 10 --max-time 30 "$AUR_RPC_URL/search/$package?by=name")
+        [ -n "$search_result" ] && break
+        ((retry++))
+        [ $retry -le "$DEFAULT_AUR_RETRY" ] && sleep 2
+    done
     log "AUR搜索结果: $search_result" "INFO" "nostdout"
     if echo "$search_result" | jq -e '.resultcount > 0' >/dev/null 2>&1; then
         log "AUR中找到包: $package"
@@ -469,7 +507,7 @@ clone_aur_package() {
     # 防御：如果 target_dir 仍为空，用 package 兜底
     [ -z "$target_dir" ] && target_dir="$package"
     cd "$PACKAGE_DIR" || return 1
-    sudo rm -rf "$target_dir"
+    rm -rf "$target_dir" 2>/dev/null || sudo rm -rf "$target_dir" 2>/dev/null || true
     local aur_source="${3:-$DEFAULT_AUR_SOURCE}"
     local package_info
     package_info=$(get_aur_package_info "$package")
@@ -477,32 +515,99 @@ clone_aur_package() {
     local actual_package=$(echo "$package_info" | cut -d'|' -f1)
     local actual_repo=$(echo "$package_info" | cut -d'|' -f2)
     log "包信息: 请求包=$package, 实际包=$actual_package, 仓库=$actual_repo"
-    if [ "$aur_source" = "github" ]; then
-        log "从GitHub镜像克隆AUR包: $actual_repo (原请求: $package)"
-        print_color "$CYAN" "从GitHub镜像克隆AUR包: $actual_repo"
-        if ! git clone --branch "$actual_repo" --single-branch "$AUR_GITHUB_MIRROR" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
-            log "从GitHub镜像克隆失败，尝试使用AUR官方克隆" "WARN"
-            print_color "$YELLOW" "从GitHub镜像克隆失败，尝试使用AUR官方克隆"
-            if ! git clone https://aur.archlinux.org/"$actual_repo".git "$target_dir"; then
-                log "AUR仓库克隆失败: $package" "ERROR"
-                print_color "$RED" "AUR包下载失败，请检查网络连接或软件包名称"
-                return 1
-            fi
-        fi
-    else
-        log "从AUR仓库克隆AUR包: $actual_repo (原请求: $package)"
-        print_color "$CYAN" "从AUR仓库克隆AUR包: $actual_repo"
-        if ! git clone https://aur.archlinux.org/"$actual_repo".git "$target_dir"; then
-            log "AUR仓库克隆失败，尝试使用GitHub镜像" "WARN"
-            print_color "$YELLOW" "AUR仓库克隆失败，尝试使用GitHub镜像"
-            if ! git clone --branch "$actual_repo" --single-branch "$AUR_GITHUB_MIRROR" "$target_dir" >> "$LOG_DIR/$CREATE_LOG_TIME.log" 2>&1; then
-                log "所有下载方式都失败: $package" "ERROR"
-                print_color "$RED" "AUR包下载失败，请检查网络连接或软件包名称"
-                return 1
-            fi
-        fi
+
+    # 尝试 1: AUR git clone（快速，支持增量）
+    log "从AUR仓库克隆: $actual_repo (原请求: $package)"
+    print_color "$CYAN" "从AUR仓库克隆AUR包: $actual_repo"
+    if git clone https://aur.archlinux.org/"$actual_repo".git "$target_dir" 2>>"$LOG_DIR/$CREATE_LOG_TIME.log"; then
+        return 0
     fi
-    return 0
+
+    # 尝试 2: AUR tarball 快照（curl 单次 HTTP 请求，比 git 更抗干扰，且支持代理）
+    log "AUR git 克隆失败，尝试下载 tarball 快照" "WARN"
+    print_color "$YELLOW" "AUR git 克隆失败，尝试下载 tarball 快照..."
+
+    local tarball_url="https://aur.archlinux.org/cgit/aur.git/snapshot/${actual_repo}.tar.gz"
+    local tmp_tarball="/tmp/aur-${actual_repo}.tar.gz"
+
+    if curl -sL --connect-timeout 10 --max-time 60 -o "$tmp_tarball" "$tarball_url"; then
+        if tar xf "$tmp_tarball" -C "$PACKAGE_DIR" 2>/dev/null; then
+            rm -f "$tmp_tarball"
+            # tarball 解压出的目录名是 actual_repo，可能需要重命名为 target_dir
+            if [ "$actual_repo" != "$target_dir" ] && [ -d "$PACKAGE_DIR/$actual_repo" ]; then
+                mv "$PACKAGE_DIR/$actual_repo" "$PACKAGE_DIR/$target_dir" 2>/dev/null || true
+            fi
+            log "tarball 快照下载成功: $actual_repo"
+            print_color "$GREEN" "AUR 包快照下载成功"
+            return 0
+        fi
+        rm -f "$tmp_tarball"
+    fi
+
+    log "所有下载方式都失败: $package" "ERROR"
+    print_color "$RED" "AUR包下载失败，请检查网络连接或软件包名称"
+    return 1
+}
+
+# ---------------------------------------------------------------------------
+# parse_dep_constraint — 解析依赖字符串中的版本约束
+#   输入: 如 "package>=1.0.0" "package==1.0.0" "package"
+#   输出: 设置全局变量 pkg_name, constraint_type, constraint_ver
+#   constraint_type: ""(无约束) "==" "<=" ">=" ">" "<"
+# ---------------------------------------------------------------------------
+parse_dep_constraint() {
+    local raw_dep="$1"
+    pkg_name="$raw_dep"
+    constraint_type=""
+    constraint_ver=""
+
+    # 注意: == 必须在 >= <= 之前检查，避免 >= 错误匹配 == 中的 =
+    if [[ "$raw_dep" == *====* ]]; then
+        pkg_name="${raw_dep%%====*}"
+        constraint_type="=="
+        constraint_ver="${raw_dep##*====}"
+    elif [[ "$raw_dep" == *==* ]]; then
+        pkg_name="${raw_dep%%==*}"
+        constraint_type="=="
+        constraint_ver="${raw_dep##*==}"
+    elif [[ "$raw_dep" == *\<=\>* ]]; then
+        pkg_name="${raw_dep%%<=*}"
+        constraint_type="<="
+        constraint_ver="${raw_dep##*<=}"
+    elif [[ "$raw_dep" == *\>=\>* ]]; then
+        pkg_name="${raw_dep%%>=*}"
+        constraint_type=">="
+        constraint_ver="${raw_dep##*>=}"
+    elif [[ "$raw_dep" == *\>* ]]; then
+        pkg_name="${raw_dep%%>*}"
+        constraint_type=">"
+        constraint_ver="${raw_dep##*>}"
+    elif [[ "$raw_dep" == *\<* ]]; then
+        pkg_name="${raw_dep%%<*}"
+        constraint_type="<"
+        constraint_ver="${raw_dep##*<}"
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# ver_cmp — 使用 pacman 的 vercmp 比较两个版本号
+#   返回: 0(a=b) 1(a<b) 2(a>b)
+# ---------------------------------------------------------------------------
+ver_cmp() {
+    local a="$1"
+    local b="$2"
+    # vercmp 内置于 pacman，返回 -1(a<b) 0(a=b) 1(a>b)
+    local r
+    r=$(vercmp "$a" "$b" 2>/dev/null) || r=0
+    if [ "$r" -lt 0 ]; then echo 1; elif [ "$r" -gt 0 ]; then echo 2; else echo 0; fi
+}
+
+# ---------------------------------------------------------------------------
+# get_installed_version — 获取已安装包的版本号（仅版本部分）
+# ---------------------------------------------------------------------------
+get_installed_version() {
+    local pkg="$1"
+    pacman -Q "$pkg" 2>/dev/null | awk '{print $2}'
 }
 
 # ---------------------------------------------------------------------------
@@ -536,36 +641,123 @@ process_dependencies() {
     fi
     for dep in $all_deps; do
         local clean_dep=$(echo "$dep" | sed 's#\u003E#>#g' | sed 's#\u003C#<#g')
-        if [ -z "$clean_dep" ] || pacman -Qs "^$clean_dep$" >/dev/null 2>&1; then
-            continue
+        [ -z "$clean_dep" ] && continue
+
+        # 解析版本约束
+        parse_dep_constraint "$clean_dep"
+        local dep_name="$pkg_name"
+        local dep_ct="$constraint_type"
+        local dep_ver="$constraint_ver"
+
+        # 检查是否已安装（考虑版本约束）
+        local installed_ver
+        installed_ver=$(get_installed_version "$dep_name")
+        if [ -n "$installed_ver" ]; then
+            case "$dep_ct" in
+                "==")
+                    [ "$(ver_cmp "$installed_ver" "$dep_ver")" = "0" ] && continue ;;
+                "<=")
+                    [ "$(ver_cmp "$installed_ver" "$dep_ver")" != "2" ] && continue ;;
+                "")
+                    continue ;;  # 无版本约束，已安装则跳过
+            esac
         fi
-        if pacman -Si "$clean_dep" >/dev/null 2>&1; then
-            print_color "$CYAN" "安装官方依赖: $clean_dep"
-            sudo pacman -S --noconfirm "$clean_dep"
-        else
-            local aur_info
-            aur_info=$(get_aur_package_info_json "$clean_dep")
-            if echo "$aur_info" | grep -q '"resultcount":1'; then
-                print_color "$CYAN" "发现AUR依赖: $clean_dep，开始安装..."
-                local _caller_dir="$PWD"
-                cd "$PACKAGE_DIR" || return 1
-                rm -rf "$clean_dep"
-                if ! clone_aur_package "$clean_dep" "$clean_dep"; then
-                    cd "$_caller_dir" || return 1
-                    continue
+
+        case "$dep_ct" in
+            "=="|"<=")
+                # 对于 <=：如果仓库当前版本已满足，直接安装仓库版本
+                if [ "$dep_ct" = "<=" ]; then
+                    local repo_ver
+                    repo_ver=$(pacman -Si "$dep_name" 2>/dev/null | grep '^Version' | awk '{print $3}')
+                    if [ -n "$repo_ver" ] && [ "$(ver_cmp "$repo_ver" "$dep_ver")" != "2" ]; then
+                        print_color "$CYAN" "安装官方依赖: $dep_name (仓库版 $repo_ver ≤ $dep_ver)"
+                        sudo pacman -S --noconfirm "$dep_name"
+                        continue
+                    fi
                 fi
-                cd "$clean_dep" || { cd "$_caller_dir" || return 1; continue; }
-                process_dependencies "$clean_dep"
-                cd "$PACKAGE_DIR/$clean_dep" || return 1
-                set_ghproxy
-                set_proxy
-                makepkg -si --skippgpcheck --noconfirm --asdeps
-                cd "$_caller_dir" || return 1
-            else
-                print_color "$YELLOW" "警告: 依赖 $clean_dep 不在官方仓库或AUR中，可能会构建失败"
-            fi
-        fi
+
+                # 从 archive.archlinux.org 下载特定版本
+                local arch
+                arch=$(pacman -Si "$dep_name" 2>/dev/null | grep '^Architecture' | awk '{print $3}')
+                arch="${arch:-x86_64}"
+                local first_letter="${dep_name:0:1}"
+
+                # 尝试多种版本格式：dep_ver 直接使用，再尝试 dep_ver-1
+                local try_versions=("$dep_ver" "${dep_ver}-1" "${dep_ver}-2")
+                local downloaded=false
+                for try_ver in "${try_versions[@]}"; do
+                    local archive_url="https://archive.archlinux.org/packages/${first_letter}/${dep_name}/${dep_name}-${try_ver}-${arch}.pkg.tar.zst"
+                    local tmp_archive="/tmp/aur-dep-${dep_name}-${try_ver}.pkg.tar.zst"
+                    print_color "$CYAN" "尝试下载归档依赖: $archive_url"
+                    if curl -sL --connect-timeout 10 --max-time 60 -o "$tmp_archive" "$archive_url" 2>/dev/null; then
+                        if [ -s "$tmp_archive" ] && ! grep -q '<!DOCTYPE\|<html' "$tmp_archive" 2>/dev/null; then
+                            print_color "$GREEN" "下载成功，安装归档依赖: ${dep_name}-${try_ver}"
+                            sudo pacman -U --noconfirm "$tmp_archive"
+                            rm -f "$tmp_archive"
+                            downloaded=true
+                            break
+                        fi
+                    fi
+                    rm -f "$tmp_archive"
+                done
+                if [ "$downloaded" = false ]; then
+                    print_color "$YELLOW" "警告: 依赖 $dep_name$dep_ct$dep_ver 在归档中也未找到，可能会构建失败"
+                fi
+                ;;
+
+            ">="|">")
+                # 去掉版本约束，正常安装最新版
+                print_color "$CYAN" "安装官方依赖: $dep_name"
+                if pacman -Si "$dep_name" >/dev/null 2>&1; then
+                    sudo pacman -S --noconfirm "$dep_name"
+                else
+                    install_aur_dep "$dep_name"
+                fi
+                ;;
+
+            "<")
+                print_color "$YELLOW" "无法处理依赖 ${dep_name}<${dep_ver}，可能会编译失败"
+                ;;
+
+            "")
+                # 无约束，走原有流程
+                if pacman -Si "$dep_name" >/dev/null 2>&1; then
+                    print_color "$CYAN" "安装官方依赖: $dep_name"
+                    sudo pacman -S --noconfirm "$dep_name"
+                else
+                    install_aur_dep "$dep_name"
+                fi
+                ;;
+        esac
     done
+}
+
+# ---------------------------------------------------------------------------
+# install_aur_dep — 安装单个 AUR 依赖（供 process_dependencies 调用）
+# ---------------------------------------------------------------------------
+install_aur_dep() {
+    local dep_name="$1"
+    local aur_info
+    aur_info=$(get_aur_package_info_json "$dep_name")
+    if echo "$aur_info" | grep -q '"resultcount":1'; then
+        print_color "$CYAN" "发现AUR依赖: $dep_name，开始安装..."
+        local _caller_dir="$PWD"
+        cd "$PACKAGE_DIR" || return 1
+        rm -rf "$dep_name"
+        if ! clone_aur_package "$dep_name" "$dep_name"; then
+            cd "$_caller_dir" || return 1
+            return 1
+        fi
+        cd "$dep_name" || { cd "$_caller_dir" || return 1; return 1; }
+        process_dependencies "$dep_name"
+        cd "$PACKAGE_DIR/$dep_name" || return 1
+        set_ghproxy
+        set_proxy
+        makepkg -si --skippgpcheck --noconfirm --asdeps
+        cd "$_caller_dir" || return 1
+    else
+        print_color "$YELLOW" "警告: 依赖 $dep_name 不在官方仓库或AUR中，可能会构建失败"
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -1482,7 +1674,13 @@ query_online_aur() {
         return 1
     fi
     local suggest_result
-    suggest_result=$(curl -s "$AUR_RPC_URL/suggest/$package")
+    local retry=0
+    while [ $retry -le "$DEFAULT_AUR_RETRY" ]; do
+        suggest_result=$(curl -s --connect-timeout 10 --max-time 30 "$AUR_RPC_URL/suggest/$package")
+        [ -n "$suggest_result" ] && break
+        ((retry++))
+        [ $retry -le "$DEFAULT_AUR_RETRY" ] && sleep 2
+    done
     log "AUR suggest结果: $suggest_result" "INFO" "nostdout"
     if [ -z "$suggest_result" ] || [ "$suggest_result" = "[]" ]; then
         print_color "$YELLOW" "AUR仓库中未找到相关软件包"
@@ -1506,7 +1704,13 @@ query_online_aur_search() {
         return 1
     fi
     local search_result
-    search_result=$(curl -s "$AUR_RPC_URL/search/$package?by=name-desc")
+    local retry=0
+    while [ $retry -le "$DEFAULT_AUR_RETRY" ]; do
+        search_result=$(curl -s --connect-timeout 10 --max-time 30 "$AUR_RPC_URL/search/$package?by=name-desc")
+        [ -n "$search_result" ] && break
+        ((retry++))
+        [ $retry -le "$DEFAULT_AUR_RETRY" ] && sleep 2
+    done
     log "AUR search结果: $search_result" "INFO" "nostdout"
     if echo "$search_result" | jq -e '.resultcount > 0' >/dev/null 2>&1; then
         echo "$search_result" | jq -r '.results[] | "\(.Name) \(.Version)\n    \(.Description)\n"'
@@ -1710,9 +1914,15 @@ refresh_aur_cache() {
             arg_params="${arg_params}&arg[]=${all_pkgs[j]}"
         done
 
-        # 调用 AUR RPC info（多包查询）
+        # 调用 AUR RPC info（多包查询，含重试）
         local aur_json
-        aur_json=$(curl -s "$AUR_RPC_URL/info?${arg_params#&}")
+        local retry=0
+        while [ $retry -le "$DEFAULT_AUR_RETRY" ]; do
+            aur_json=$(curl -s --connect-timeout 10 --max-time 30 "$AUR_RPC_URL/info?${arg_params#&}")
+            [ -n "$aur_json" ] && break
+            ((retry++))
+            [ $retry -le "$DEFAULT_AUR_RETRY" ] && sleep 2
+        done
         log "批量AUR查询 (${idx}-$((batch_end-1))): 返回 $(echo "$aur_json" | jq '.resultcount') 条"
 
         # 解析每个结果的 Name + Version
@@ -1796,7 +2006,13 @@ update_aur_packages() {
                 miss_args="${miss_args}&arg[]=${missing_pkgs[mj]}"
             done
             local miss_json
-            miss_json=$(curl -s "$AUR_RPC_URL/info?${miss_args#&}")
+            local retry=0
+            while [ $retry -le "$DEFAULT_AUR_RETRY" ]; do
+                miss_json=$(curl -s --connect-timeout 10 --max-time 30 "$AUR_RPC_URL/info?${miss_args#&}")
+                [ -n "$miss_json" ] && break
+                ((retry++))
+                [ $retry -le "$DEFAULT_AUR_RETRY" ] && sleep 2
+            done
             # 提取 Name|Version|PackageBase，三字段便于后续去重
             local miss_results
             miss_results=$(echo "$miss_json" | jq -r '.results[]? | "\(.Name)|\(.Version)|\(.PackageBase)"' 2>/dev/null)
@@ -1955,7 +2171,7 @@ self_update() {
         case $DEFAULT_GITHUB_PROXY in
             1) proxy_url="https://github.akams.cn/${fallback_url}" ;;
             2) proxy_url="https://gh-proxy.com/${fallback_url}" ;;
-            3) proxy_url="https://ghfile.geekertao.top/${fallback_url}" ;;
+            3) proxy_url="https://gh.dpik.top/${fallback_url}" ;;
             4) proxy_url="https://gh.llkk.cc/${fallback_url}" ;;
         esac
         print_color "$YELLOW" "主版本源不可用，尝试代理: $proxy_url"
@@ -2024,7 +2240,7 @@ self_update() {
     case $DEFAULT_GITHUB_PROXY in
         1) download_url="https://github.akams.cn/${github_url}" ;;
         2) download_url="https://gh-proxy.com/${github_url}" ;;
-        3) download_url="https://ghfile.geekertao.top/${github_url}" ;;
+        3) download_url="https://gh.dpik.top/${github_url}" ;;
         4) download_url="https://gh.llkk.cc/${github_url}" ;;
     esac
 
@@ -2059,12 +2275,13 @@ self_update() {
 
 # ---------------------------------------------------------------------------
 # first_use — 首次使用时安装必要依赖并配置 flatpak 源
-#   安装: base-devel, git, flatpak, npm, nodejs
+#   安装: base-devel, git, flatpak, jq
+#   npm/nodejs 为可选依赖（optdepends），用于 AUR 包的 npm 构建步骤
 #   可选: 替换 flathub 为中科大镜像
 # ---------------------------------------------------------------------------
 first_use() {
     log "首次使用，自动安装依赖"
-    sudo pacman -S --noconfirm --needed base-devel git flatpak npm nodejs jq
+    sudo pacman -S --noconfirm --needed base-devel git flatpak jq
     log "设置flatpak源"
     sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
     read -rp "是否要更换flathub源为中科大源？（Y/n）: " use_mirror
@@ -2090,9 +2307,15 @@ first_use() {
 # ---------------------------------------------------------------------------
 set_proxy() {
     if [ "$DEFAULT_NPM_PROXY" = "true" ]; then
-        log "设置NPM代理: https://registry.npmmirror.com"
-        npm config set registry https://registry.npmmirror.com
-        sudo npm config set registry https://registry.npmmirror.com
+        if [ "$HAS_NPM" = "true" ]; then
+            log "设置 npm 镜像: https://registry.npmmirror.com"
+            npm config set registry https://registry.npmmirror.com 2>/dev/null
+            sudo npm config set registry https://registry.npmmirror.com 2>/dev/null
+        fi
+        if [ "$HAS_YARN" = "true" ]; then
+            log "设置 yarn 镜像: https://registry.npmmirror.com"
+            yarn config set registry https://registry.npmmirror.com 2>/dev/null
+        fi
     fi
     if [ "$DEFAULT_KERNEL_ORG_PROXY" = "true" ]; then
         log "替换kernel.org镜像为中科大镜像"
@@ -2121,9 +2344,9 @@ set_ghproxy() {
                 sed -i 's#https://raw.githubusercontent.com/#https://gh-proxy.com/https://raw.githubusercontent.com/#g' PKGBUILD
                 ;;
             3)
-                log "使用GitHub代理: https://ghfile.geekertao.top/"
-                sed -i 's#https://github.com/#https://ghfile.geekertao.top/https://github.com/#g' PKGBUILD
-                sed -i 's#https://raw.githubusercontent.com/#https://ghfile.geekertao.top/https://raw.githubusercontent.com/#g' PKGBUILD
+                log "使用GitHub代理: https://gh.dpik.top/"
+                sed -i 's#https://github.com/#https://gh.dpik.top/https://github.com/#g' PKGBUILD
+                sed -i 's#https://raw.githubusercontent.com/#https://gh.dpik.top/https://raw.githubusercontent.com/#g' PKGBUILD
                 ;;
             4)
                 log "使用GitHub代理: https://gh.llkk.cc/"
@@ -2147,11 +2370,17 @@ clean_aur() {
     log "清除AUR缓存"
     print_color "$CYAN" "正在清除 AUR 缓存..."
 
-    # 清除日志
+    # 清除日志（保留当前会话的日志文件）
     if [ -d "$LOG_DIR" ]; then
-        rm -rf "$LOG_DIR"
-        print_color "$GREEN" "  ✓ 已清除日志目录: $LOG_DIR"
-        log "已删除日志目录: $LOG_DIR"
+        local current_log="$LOG_DIR/$CREATE_LOG_TIME.log"
+        local log_count
+        log_count=$(find "$LOG_DIR" -name "*.log" ! -name "$(basename "$current_log")" 2>/dev/null | wc -l)
+        if [ "$log_count" -gt 0 ]; then
+            find "$LOG_DIR" -name "*.log" ! -name "$(basename "$current_log")" -delete 2>/dev/null
+            print_color "$GREEN" "  ✓ 已清除 $log_count 个旧日志文件"
+        else
+            print_color "$GREEN" "  ✓ 没有需要清除的旧日志"
+        fi
     fi
 
     # 清除包构建目录
@@ -2323,7 +2552,7 @@ system_check() {
     done
     if [ -n "$missing" ]; then
         print_color "$RED" "缺少必要依赖:${missing}"
-        print_color "$YELLOW" "请运行: yay-plus --first-use  或手动安装后重试"
+        print_color "$YELLOW" "请运行: yay-plus --first-use 或手动安装后重试"
         exit 6
     fi
 }

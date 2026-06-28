@@ -1,0 +1,12 @@
+# Yay+ ChangeLog
+
+（提示：本 ChangeLog 从 v3.2.0.2-Release 开始，以前的 ChangeLog 请见 Releases 页面）
+
+v3.2.0.2-Release (2026/6/28)
+
+- 增加了 AUR 重试次数阀值
+- 将 npm 设为可选依赖项，支持了 npm 和 yarn 的自动换源
+- 增强了依赖版本号解析
+- 将 ghfile.geekertao.top 替换为 gh.dpik.top 以免触发 403
+- 增加克隆方式，当克隆失败时切换到快照下载
+- 增强了搜索逻辑
