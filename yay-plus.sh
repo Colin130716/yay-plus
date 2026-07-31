@@ -1593,7 +1593,7 @@ install_via_pacman() {
     local package_info
     package_info=$(pacman -Si "$package" 2>/dev/null)
     if [ -n "$package_info" ]; then
-        _ PACMAN_ABOUT
+        print_color "$BLUE" "$(_ PACMAN_ABOUT)"
         local repo; repo=$(echo "$package_info" | grep "^Repository" | cut -d: -f2 | tr -d ' ')
         local name; name=$(echo "$package_info" | grep "^Name" | cut -d: -f2 | tr -d ' ')
         local version; version=$(echo "$package_info" | grep "^Version" | cut -d: -f2 | tr -d ' ')
@@ -1647,8 +1647,8 @@ install_via_aur() {
     local pkgname pkgver pkgrel
     # shellcheck source=/dev/null
     source PKGBUILD >/dev/null 2>&1
-    _ AUR_INSTALL_ABOUT
-    _ AUR_INSTALL_DISPLAY "$pkgname" "$pkgver-$pkgrel"
+    print_color "$BLUE" "$(_ AUR_INSTALL_ABOUT)"
+    print_color "$GREEN" "$(_ AUR_INSTALL_DISPLAY "$pkgname" "$pkgver-$pkgrel")"
     echo ""
     if ! confirm_action "$(_ INSTALL_CONFIRM)"; then
             print_color "$YELLOW" "$(_ INSTALL_CANCELED)"
