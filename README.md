@@ -11,9 +11,6 @@
 > [!NOTE]
 > 本项目和 Yay（由 Jguer 及其他贡献者开发的一个 AUR Helper，[Github](https://github.com/Jguer/yay)）没有关联，只是取名时恰巧想到了这个名字而已，请不要混淆。
 
-> [!WARNING]
-> 如果非必要，请使用命令行参数进行操作，不要使用交互式操作，交互式操作目前已经比命令行参数缺失了部分功能。
-
 官网请见：[https://yayplus.qzz.io/](https://yayplus.qzz.io/)
 
 ## 使用方法
