@@ -1,4 +1,4 @@
-# yay-plus README v42.2.2
+# yay-plus README v42.2.3
 
 ![Yay+ Version](https://img.shields.io/github/v/release/Colin130716/yay-plus?display_name=release&style=for-the-badge)
 ![Downloads](https://img.shields.io/github/downloads/Colin130716/yay-plus/total?style=for-the-badge)
@@ -40,8 +40,7 @@
 [sudo] pacman -S base-devel git flatpak jq vim
 ```
 
-> [!NOTE]
-> 可选依赖于 npm、yarn 和 bun 用于换源
+> 注：可选依赖于 npm、yarn 和 bun 用于换源
 
 ```bash
 # 运行
@@ -49,7 +48,6 @@ chmod +x /path/to/yay-plus.sh
 /path/to/yay-plus.sh
 ```
 
-> [!IMPORTANT]
 > 在最新的 Beta 版中，新增了 i18n 支持，因此需要同时下载 `yay-plus.sh` 和三个 i18n 文件（`en.sh`、`zh.sh` 和 `zh_TW.sh`），并将 i18n 文件放入本体目录下的子文件夹 `locale` 中，否则会导致脚本无法正常工作。
 
 </details>
