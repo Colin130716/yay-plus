@@ -1,7 +1,7 @@
 # Maintainer: Colin130716 <qsdwin2023@outlook.com>
 pkgname=yay-plus
-pkgver=3.2.0.3
-pkgrel=2
+pkgver=3.2.1
+pkgrel=1
 epoch=3
 pkgdesc="一个更易于中国人使用的AUR Helper"
 arch=('any')
@@ -9,14 +9,14 @@ url="https://github.com/Colin130716/yay-plus"
 license=('GPL3')
 depends=('git' 'base-devel' 'flatpak' 'jq' 'bash' 'vim')
 optdepends=('npm: 用于 npm/yarn 换源' 'yarn: 用于 npm/yarn 换源')
-source=("https://github.com/Colin130716/yay-plus/releases/download/v3.2.0.3-Beta2/yay-plus.sh"
-        "https://github.com/Colin130716/yay-plus/releases/download/v3.2.0.3-Beta2/zh.sh"
-        "https://github.com/Colin130716/yay-plus/releases/download/v3.2.0.3-Beta2/en.sh"
-        "https://github.com/Colin130716/yay-plus/releases/download/v3.2.0.3-Beta2/zh_TW.sh")
-sha256sums=('93fdebda78f2fc98cd864211917f0cea27ac406dcefc1dc9a89f45f9c71bf680'
-            '0f97832c132ae3d99116a54ee0bbd50b9004e1ec1469aac09d3dbc35425c9063'
-            '69235c0811be0607e5df620c44b20b556478a3b7c1cb869e6075713dac4f80a2'
-            'dedb01a43a1d1f775e69890e40dfc2082d2fb377a6aaf6c1e5d5eed34b98d25e')
+source=("https://github.com/Colin130716/yay-plus/releases/download/v3.2.1-Beta1/yay-plus.sh"
+        "https://github.com/Colin130716/yay-plus/releases/download/v3.2.1-Beta1/zh.sh"
+        "https://github.com/Colin130716/yay-plus/releases/download/v3.2.1-Beta1/en.sh"
+        "https://github.com/Colin130716/yay-plus/releases/download/v3.2.1-Beta1/zh_TW.sh")
+sha256sums=('b1d5026a6b60ed3df78d18544f6c75105f3b553dc485d10840d043683ea19a07'
+            '3bfef9f5e8dfc8fe7aff6684f9fcb881befed6943cba2c4cac911d127e99a186'
+            '0a96c3926ed07de1f38598d66ada55b2646315bb774b85c55dbb478f5604b917'
+            'cfac75b0bf3feedc8679260b01deb7b02e4242cee5ae69919dbe0b4105580914')
 
 package() {
     install -Dm755 "$srcdir/yay-plus.sh" "$pkgdir/usr/bin/yay-plus"

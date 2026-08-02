@@ -141,7 +141,7 @@ DEFAULT_SELF_UPDATE_CHANNEL="release"
 # 语言: 空=自动检测  zh=中文  en=英文
 DEFAULT_LANG=""
 # 配置文件格式版本（用于自动升级旧配置）
-CONFIG_VERSION="8"
+CONFIG_VERSION="9"
 # AUR 包版本缓存文件，批量缓存避免逐包 RPC 调用
 readonly AUR_CACHE_FILE="$HOME/.yay-plus/aur-packages.cache"
 # AUR RPC 请求重试次数（0=不重试，默认 3 即最多重试 3 次，共 4 次尝试）
@@ -151,7 +151,7 @@ readonly VERSION_JSON_URL="https://yayplus.qzz.io/version.json"
 # 自更新状态文件（记录上次检查的版本，避免重复提示）
 readonly SELF_UPDATE_STATE="$HOME/.yay-plus/.self-update"
 # 脚本版本号
-YAY_PLUS_VERSION="3.2.0.3"
+YAY_PLUS_VERSION="3.2.1"
 # GitHub 上 AUR 的镜像仓库地址（load_config 根据代理设置动态替换）
 # shellcheck disable=SC2034
 AUR_GITHUB_MIRROR="https://github.com/archlinux/aur.git"
@@ -255,22 +255,25 @@ update_config() {
 # Yay+ 配置文件
 # 此文件用于设置 Yay+ 的默认行为
 
-# GitHub代理设置 (空:每次询问, 1-5:使用对应代理)
+# GitHub代理设置 (空:每次询问, 1-5:使用对应代理, 或直接填自定义代理URL)
 # 1: https://github.akams.cn/
 # 2: https://gh-proxy.com/
 # 3: https://gh.dpik.top/
 # 4: https://gh.llkk.cc/
 # 5: 不使用GitHub代理 (不推荐)
+# 自定义代理示例: github_proxy=https://gh.xxx.com/
 github_proxy=$old_github_proxy
 
-# NPM代理设置 (true:启用代理, false:不启用代理)
+# NPM代理设置 (true:启用默认镜像, false:不启用, 或直接填自定义registry URL)
 # 启用后会使用 https://registry.npmmirror.com 作为NPM镜像源
+# 自定义镜像示例: npm_proxy=https://registry.xxx.com
 npm_proxy=$old_npm_proxy
 
 # AUR源选择 (aur:使用AUR官方, github:使用GitHub镜像)
 aur_source=$old_aur_source
 
-# kernel.org代理设置 (true:启动代理, false:不启用代理)
+# kernel.org代理设置 (true:启用默认镜像, false:不启用, 或直接填自定义镜像URL)
+# 自定义镜像示例: kernel_org_proxy=https://mirrors.nju.edu.cn/kernel.org/
 kernel_org_proxy=$old_kernel_org_proxy
 
 # 调试模式 (true:启用调试模式, false:不启用调试模式)
@@ -285,7 +288,7 @@ self_update_channel=$old_self_update_channel
 # AUR RPC 请求重试次数（0=不重试，默认3次重试）
 aur_retry=$old_aur_retry
 
-# 语言设置（空:自动检测, zh:中文, en:英文）
+# 语言设置（空:自动检测, zh:简体中文, zh_TW:繁体中文, en:英文）
 lang=$old_lang
 
 # 配置文件版本
@@ -302,22 +305,41 @@ EOF
 load_config() {
     if [ -f "$CONFIG_FILE" ]; then
         log "$(_ LOG_CONFIG_LOADING "$CONFIG_FILE")"
-        # 读取配置
-        DEFAULT_GITHUB_PROXY=$(get_config_value "github_proxy" "$DEFAULT_GITHUB_PROXY")
-        DEFAULT_NPM_PROXY=$(get_config_value "npm_proxy" "$DEFAULT_NPM_PROXY")
+        # 读取配置并校验（不符合规则的值回退默认）
+        # github_proxy: 1-5 内置代理编号，或自定义 http(s) URL
+        DEFAULT_GITHUB_PROXY=$(validate_config_value "github_proxy" \
+            "$(get_config_value "github_proxy" "$DEFAULT_GITHUB_PROXY")" \
+            "$DEFAULT_GITHUB_PROXY" '^(1|2|3|4|5|https?://.+)$')
+        # npm_proxy: true/false 开关，或自定义 registry URL
+        DEFAULT_NPM_PROXY=$(validate_config_value "npm_proxy" \
+            "$(get_config_value "npm_proxy" "$DEFAULT_NPM_PROXY")" \
+            "$DEFAULT_NPM_PROXY" '^(true|false|https?://.+)$')
         DEFAULT_AUR_SOURCE=$(get_config_value "aur_source" "$DEFAULT_AUR_SOURCE")
-        DEFAULT_KERNEL_ORG_PROXY=$(get_config_value "kernel_org_proxy" "$DEFAULT_KERNEL_ORG_PROXY")
-        DEFAULT_DEBUG_MODE=$(get_config_value "debug_mode" "$DEFAULT_DEBUG_MODE")
-        DEFAULT_AUR_CACHE_TTL=$(get_config_value "aur_cache_ttl" "$DEFAULT_AUR_CACHE_TTL")
-        DEFAULT_SELF_UPDATE_CHANNEL=$(get_config_value "self_update_channel" "$DEFAULT_SELF_UPDATE_CHANNEL")
-        DEFAULT_AUR_RETRY=$(get_config_value "aur_retry" "$DEFAULT_AUR_RETRY")
-        DEFAULT_LANG=$(get_config_value "lang" "$DEFAULT_LANG")
+        # kernel_org_proxy: true/false 开关，或自定义镜像 URL
+        DEFAULT_KERNEL_ORG_PROXY=$(validate_config_value "kernel_org_proxy" \
+            "$(get_config_value "kernel_org_proxy" "$DEFAULT_KERNEL_ORG_PROXY")" \
+            "$DEFAULT_KERNEL_ORG_PROXY" '^(true|false|https?://.+)$')
+        DEFAULT_DEBUG_MODE=$(validate_config_value "debug_mode" \
+            "$(get_config_value "debug_mode" "$DEFAULT_DEBUG_MODE")" \
+            "$DEFAULT_DEBUG_MODE" '^(true|false)$')
+        DEFAULT_AUR_CACHE_TTL=$(validate_config_value "aur_cache_ttl" \
+            "$(get_config_value "aur_cache_ttl" "$DEFAULT_AUR_CACHE_TTL")" \
+            "$DEFAULT_AUR_CACHE_TTL" '^[0-9]+$')
+        DEFAULT_SELF_UPDATE_CHANNEL=$(validate_config_value "self_update_channel" \
+            "$(get_config_value "self_update_channel" "$DEFAULT_SELF_UPDATE_CHANNEL")" \
+            "$DEFAULT_SELF_UPDATE_CHANNEL" '^(release|beta|dev)$')
+        DEFAULT_AUR_RETRY=$(validate_config_value "aur_retry" \
+            "$(get_config_value "aur_retry" "$DEFAULT_AUR_RETRY")" \
+            "$DEFAULT_AUR_RETRY" '^[0-9]+$')
+        DEFAULT_LANG=$(validate_config_value "lang" \
+            "$(get_config_value "lang" "$DEFAULT_LANG")" \
+            "$DEFAULT_LANG" '^(zh|zh_TW|en)$')
         CONFIG_VERSION=$(get_config_value "config_version" "$CONFIG_VERSION")
     else
         log "$(_ LOG_CONFIG_NOT_FOUND_DEFAULT)"
     fi
 
-    # 根据代理编号拼接 GitHub 镜像地址
+    # 根据代理设置拼接 GitHub 镜像地址（内置编号或自定义 URL）
     case $DEFAULT_GITHUB_PROXY in
         1)
             AUR_GITHUB_MIRROR="https://github.akams.cn/https://github.com/archlinux/aur.git"
@@ -331,6 +353,10 @@ load_config() {
         4)
             # shellcheck disable=SC2034
             AUR_GITHUB_MIRROR="https://gh.llkk.cc/https://github.com/archlinux/aur.git"
+            ;;
+        https://*|http://*)
+            # shellcheck disable=SC2034
+            AUR_GITHUB_MIRROR="${DEFAULT_GITHUB_PROXY}https://github.com/archlinux/aur.git"
             ;;
     esac
 }
@@ -353,6 +379,25 @@ get_config_value() {
 }
 
 # ---------------------------------------------------------------------------
+# validate_config_value — 校验配置值，不符合规则则跳过该设置使用默认值
+#   参数: $1=键名  $2=原始值  $3=默认值  $4=合法值扩展正则（grep -E）
+#   输出: 合法值或默认值（写入 stdout）
+#   说明: 允许空值通过（空=未设置，交给默认值逻辑处理）
+# ---------------------------------------------------------------------------
+validate_config_value() {
+    local key="$1"
+    local value="$2"
+    local default_value="$3"
+    local pattern="$4"
+    if [ -n "$value" ] && ! echo "$value" | grep -qE "$pattern"; then
+        log "$(_ LOG_CONFIG_INVALID "$key" "$value")" "WARN"
+        echo "$default_value"
+    else
+        echo "$value"
+    fi
+}
+
+# ---------------------------------------------------------------------------
 # create_default_config — 写入全新的默认配置文件
 #   仅在配置文件不存在时由 check_and_create_config 调用
 # ---------------------------------------------------------------------------
@@ -363,22 +408,25 @@ create_default_config() {
 # Yay+ 配置文件
 # 此文件用于设置 Yay+ 的默认行为
 
-# GitHub代理设置 (空:每次询问, 1-5:使用对应代理)
+# GitHub代理设置 (空:每次询问, 1-5:使用对应代理, 或直接填自定义代理URL)
 # 1: https://github.akams.cn/
 # 2: https://gh-proxy.com/
 # 3: https://gh.dpik.top/
 # 4: https://gh.llkk.cc/
 # 5: 不使用GitHub代理 (不推荐)
+# 自定义代理示例: github_proxy=https://gh.xxx.com/
 github_proxy=$DEFAULT_GITHUB_PROXY
 
-# NPM代理设置 (true:启用代理, false:不启用代理)
+# NPM代理设置 (true:启用默认镜像, false:不启用, 或直接填自定义registry URL)
 # 启用后会使用 https://registry.npmmirror.com 作为NPM镜像源
+# 自定义镜像示例: npm_proxy=https://registry.xxx.com
 npm_proxy=$DEFAULT_NPM_PROXY
 
 # AUR源选择 (aur:使用AUR官方, github:使用GitHub镜像)
 aur_source=$DEFAULT_AUR_SOURCE
 
-# kernel.org代理设置 (true:启动代理, false:不启用代理)
+# kernel.org代理设置 (true:启用默认镜像, false:不启用, 或直接填自定义镜像URL)
+# 自定义镜像示例: kernel_org_proxy=https://mirrors.nju.edu.cn/kernel.org/
 kernel_org_proxy=$DEFAULT_KERNEL_ORG_PROXY
 
 # 调试模式 (true:启用调试模式, false:不启用调试模式)
@@ -393,7 +441,7 @@ self_update_channel=$DEFAULT_SELF_UPDATE_CHANNEL
 # AUR RPC 请求重试次数（0=不重试，默认3次重试）
 aur_retry=$DEFAULT_AUR_RETRY
 
-# 语言设置（空:自动检测, zh:中文, en:英文）
+# 语言设置（空:自动检测, zh:简体中文, zh_TW:繁体中文, en:英文）
 lang=$DEFAULT_LANG
 
 # 配置文件版本
@@ -2537,27 +2585,106 @@ first_use() {
 }
 
 # ---------------------------------------------------------------------------
+# pkgbuild_source_has_domain — 检测 PKGBUILD 的 source* 字段是否含指定域名
+#   参数: $1=域名扩展正则（grep -E）
+#   返回: 0=包含  1=不包含
+#   覆盖 source= / source_x86_64= 等所有 source 变体
+# ---------------------------------------------------------------------------
+pkgbuild_source_has_domain() {
+    local domain_pattern="$1"
+    grep -E '^[[:space:]]*source[A-Za-z0-9_]*=' PKGBUILD 2>/dev/null | grep -qE "$domain_pattern"
+}
+
+# ---------------------------------------------------------------------------
+# pkgbuild_has_command — 检测 PKGBUILD 中是否出现指定构建命令
+#   参数: $1=命令扩展正则（grep -E）
+#   返回: 0=出现  1=未出现
+# ---------------------------------------------------------------------------
+pkgbuild_has_command() {
+    grep -qE "$1" PKGBUILD 2>/dev/null
+}
+
+# ---------------------------------------------------------------------------
 # set_proxy — 在构建前设置 NPM/kernel.org 代理
 #   修改当前目录的 PKGBUILD（替换 kernel.org 链接）
 #   设置 npm registry 镜像
 #   必须在目标包目录中调用
+#   仅当 PKGBUILD 实际用到对应资源时才生效：
+#     npm: 检测到 npm install/ci/i 才设置 npm registry
+#     yarn: 检测到 yarn install 才设置 yarn registry
+#     bun: 检测到 bun install 才在其前一行插入 bunfig.toml 写入命令
+#     kernel.org: source* 字段含 www.kernel.org / cdn.kernel.org 才替换镜像
 # ---------------------------------------------------------------------------
 set_proxy() {
-    if [ "$DEFAULT_NPM_PROXY" = "true" ]; then
-        if [ "$HAS_NPM" = "true" ]; then
-            log "$(_ LOG_SET_NPM_MIRROR)"
-            npm config set registry https://registry.npmmirror.com 2>/dev/null
-            sudo npm config set registry https://registry.npmmirror.com 2>/dev/null
-        fi
-        if [ "$HAS_YARN" = "true" ]; then
-            log "$(_ LOG_SET_YARN_MIRROR)"
-            yarn config set registry https://registry.npmmirror.com 2>/dev/null
+    # npm registry：仅在 PKGBUILD 含 npm 安装命令时设置
+    if pkgbuild_has_command 'npm[[:space:]]+(install|ci|i)([^[:alnum:]_]|$)'; then
+        case $DEFAULT_NPM_PROXY in
+            true)
+                if [ "$HAS_NPM" = "true" ]; then
+                    log "$(_ LOG_SET_NPM_MIRROR "https://registry.npmmirror.com")"
+                    npm config set registry https://registry.npmmirror.com 2>/dev/null
+                    sudo npm config set registry https://registry.npmmirror.com 2>/dev/null
+                fi
+                ;;
+            https://*|http://*)
+                if [ "$HAS_NPM" = "true" ]; then
+                    log "$(_ LOG_SET_NPM_MIRROR "$DEFAULT_NPM_PROXY")"
+                    npm config set registry "$DEFAULT_NPM_PROXY" 2>/dev/null
+                    sudo npm config set registry "$DEFAULT_NPM_PROXY" 2>/dev/null
+                fi
+                ;;
+        esac
+    fi
+    # yarn registry：仅在 PKGBUILD 含 yarn install 命令时设置
+    if pkgbuild_has_command 'yarn[[:space:]]+install([^[:alnum:]_]|$)'; then
+        case $DEFAULT_NPM_PROXY in
+            true)
+                if [ "$HAS_YARN" = "true" ]; then
+                    log "$(_ LOG_SET_YARN_MIRROR "https://registry.npmmirror.com")"
+                    yarn config set registry https://registry.npmmirror.com 2>/dev/null
+                fi
+                ;;
+            https://*|http://*)
+                if [ "$HAS_YARN" = "true" ]; then
+                    log "$(_ LOG_SET_YARN_MIRROR "$DEFAULT_NPM_PROXY")"
+                    yarn config set registry "$DEFAULT_NPM_PROXY" 2>/dev/null
+                fi
+                ;;
+        esac
+    fi
+    # bun registry：仅在 PKGBUILD 含 bun install 命令时，在其前一行插入
+    # bunfig.toml 写入命令（echo 命令行跟随原缩进，toml 内容保持顶格）
+    if pkgbuild_has_command 'bun[[:space:]]+install([^[:alnum:]_]|$)'; then
+        local bun_registry="https://registry.npmmirror.com"
+        case $DEFAULT_NPM_PROXY in
+            https://*|http://*) bun_registry="$DEFAULT_NPM_PROXY" ;;
+        esac
+        local bun_line bun_indent
+        bun_line=$(grep -nE 'bun[[:space:]]+install' PKGBUILD | head -1 | cut -d: -f1)
+        if [ -n "$bun_line" ]; then
+            bun_indent=$(sed -n "${bun_line}p" PKGBUILD | sed -E 's/^([[:space:]]*).*/\1/')
+            log "$(_ LOG_SET_BUN_MIRROR "$bun_registry")"
+            sed -i "${bun_line}i\\
+${bun_indent}echo '\\
+[install]\\
+registry = \"${bun_registry}\"\\
+' >> bunfig.toml" PKGBUILD
         fi
     fi
-    if [ "$DEFAULT_KERNEL_ORG_PROXY" = "true" ]; then
-        log "$(_ LOG_REPLACE_KERNEL_MIRROR)"
-        sed -i 's#https://www.kernel.org/pub/#https://mirrors.ustc.edu.cn/kernel.org/#g' PKGBUILD
-        sed -i 's#https://cdn.kernel.org/pub/#https://mirrors.ustc.edu.cn/kernel.org/#g' PKGBUILD
+    # kernel.org 镜像：仅在 source* 字段含 kernel.org 链接时替换
+    if pkgbuild_source_has_domain 'www\.kernel\.org|cdn\.kernel\.org'; then
+        case $DEFAULT_KERNEL_ORG_PROXY in
+            true)
+                log "$(_ LOG_REPLACE_KERNEL_MIRROR "https://mirrors.ustc.edu.cn/kernel.org/")"
+                sed -i 's#https://www.kernel.org/pub/#https://mirrors.ustc.edu.cn/kernel.org/#g' PKGBUILD
+                sed -i 's#https://cdn.kernel.org/pub/#https://mirrors.ustc.edu.cn/kernel.org/#g' PKGBUILD
+                ;;
+            https://*|http://*)
+                log "$(_ LOG_REPLACE_KERNEL_MIRROR "$DEFAULT_KERNEL_ORG_PROXY")"
+                sed -i "s#https://www.kernel.org/pub/#${DEFAULT_KERNEL_ORG_PROXY}#g" PKGBUILD
+                sed -i "s#https://cdn.kernel.org/pub/#${DEFAULT_KERNEL_ORG_PROXY}#g" PKGBUILD
+                ;;
+        esac
     fi
 }
 
@@ -2565,10 +2692,11 @@ set_proxy() {
 # set_ghproxy — 替换当前目录 PKGBUILD 中的 GitHub 链接为代理地址
 #   根据 DEFAULT_GITHUB_PROXY 选择代理，替换 github.com 和
 #   raw.githubusercontent.com 的 URL
+#   仅当 source* 字段含 github.com / *.githubusercontent.com 时才替换
 #   必须在目标包目录中调用（操作 ./PKGBUILD）
 # ---------------------------------------------------------------------------
 set_ghproxy() {
-    if [ -n "$DEFAULT_GITHUB_PROXY" ]; then
+    if [ -n "$DEFAULT_GITHUB_PROXY" ] && pkgbuild_source_has_domain 'github\.com|githubusercontent\.com'; then
         case $DEFAULT_GITHUB_PROXY in
             1)
                 log "$(_ LOG_GITHUB_PROXY_AKAMS)"
@@ -2589,6 +2717,11 @@ set_ghproxy() {
                 log "$(_ LOG_GITHUB_PROXY_LLKK)"
                 sed -i 's#https://github.com/#https://gh.llkk.cc/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://gh.llkk.cc/https://raw.githubusercontent.com/#g' PKGBUILD
+                ;;
+            https://*|http://*)
+                log "$(_ LOG_GITHUB_PROXY_CUSTOM "$DEFAULT_GITHUB_PROXY")"
+                sed -i "s#https://github.com/#${DEFAULT_GITHUB_PROXY}https://github.com/#g" PKGBUILD
+                sed -i "s#https://raw.githubusercontent.com/#${DEFAULT_GITHUB_PROXY}https://raw.githubusercontent.com/#g" PKGBUILD
                 ;;
             *)
                 log "$(_ LOG_GITHUB_PROXY_NONE)"

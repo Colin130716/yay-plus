@@ -2,6 +2,14 @@
 
 （提示：本 ChangeLog 从 v3.2.0.2-Release 开始，以前的 ChangeLog 请见 Releases 页面）
 
+v3.2.1-Beta1 (2026/8/2)
+
+- 新增配置自定义代理地址：github_proxy / npm_proxy / kernel_org_proxy 支持直接填写自定义 URL
+- 新增配置检测功能：配置文件值不符合规则时跳过该设置并使用默认值
+- 代理替换改为按需触发：source* 字段含 GitHub/kernel.org 链接时才替换为代理/镜像地址
+- 新增 bun 换源：检测到 PKGBUILD 含 bun install 时自动在其前一行写入 bunfig.toml registry 配置
+- 更新配置文件语言注释：补充繁体中文（zh_TW）说明
+
 v3.2.0.3-Beta2 (2026/7/31)
 
 - 修复安装提示格式与颜色丢失：AUR/Pacman 单包安装前的"即将安装"标题与包名恢复分行显示（蓝/绿色）
