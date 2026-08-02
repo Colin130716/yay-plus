@@ -48,7 +48,7 @@ chmod +x /path/to/yay-plus.sh
 /path/to/yay-plus.sh
 ```
 
-> 在最新的 Beta 版中，新增了 i18n 支持，因此需要同时下载 `yay-plus.sh` 和三个 i18n 文件（`en.sh`、`zh.sh` 和 `zh_TW.sh`），并将 i18n 文件放入本体目录下的子文件夹 `locale` 中，否则会导致脚本无法正常工作。
+> 在最新的 Beta 版中，新增了 i18n 支持，因此需要同时下载 `yay-plus.sh` 和三个 i18n 文件（`en.json`、`zh.json` 和 `zh_TW.json`），并将 i18n 文件放入本体目录下的子文件夹 `locale` 中，否则会导致脚本无法正常工作。
 
 </details>
 

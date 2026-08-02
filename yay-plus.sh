@@ -72,7 +72,24 @@ _() {
 }
 
 # ---------------------------------------------------------------------------
-# load_locale — 根据系统语言和用户配置加载对应语言翻译
+# _load_locale_json — 解析 JSON 翻译文件并赋值 TEXT_* 变量
+#   参数: $1=JSON 文件路径
+#   值中的 ${VAR}（如 ${GREEN} 颜色、${YAY_PLUS_VERSION}）在 eval 赋值时展开，
+#   复刻原 source 加载 .sh 的变量展开语义
+# ---------------------------------------------------------------------------
+_load_locale_json() {
+    local tsv_file key val
+    tsv_file="$(mktemp)"
+    jq -r 'to_entries[] | .key + "\t" + (.value|tojson)' "$1" > "$tsv_file" 2>/dev/null
+    while IFS=$'\t' read -r key val; do
+        [ -z "$key" ] && continue
+        eval "${key}=${val}"
+    done < "$tsv_file"
+    rm -f "$tsv_file"
+}
+
+# ---------------------------------------------------------------------------
+# load_locale — 根据系统语言和用户配置加载对应语言翻译（JSON 格式）
 #   检测优先级: --lang 命令行参数 > LANG_OVERRIDE 变量 > 系统 $LANG
 #   默认: zh（中文）
 # ---------------------------------------------------------------------------
@@ -85,17 +102,15 @@ load_locale() {
             *)   lang_code="en" ;;
         esac
     fi
-    local locale_file="$LOCALE_DIR/${lang_code}.sh"
+    local locale_file="$LOCALE_DIR/${lang_code}.json"
     if [ -f "$locale_file" ]; then
-        # shellcheck source=/dev/null
-        source "$locale_file"
+        _load_locale_json "$locale_file"
         CURRENT_LANG="$lang_code"
     else
         log "$(_ LOG_LOCALE_NOT_FOUND "$locale_file")" "WARN"
         CURRENT_LANG="en"
-        if [ -f "$LOCALE_DIR/en.sh" ]; then
-            # shellcheck source=/dev/null
-            source "$LOCALE_DIR/en.sh"
+        if [ -f "$LOCALE_DIR/en.json" ]; then
+            _load_locale_json "$LOCALE_DIR/en.json"
         fi
     fi
 }

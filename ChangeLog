@@ -2,6 +2,10 @@
 
 （提示：本 ChangeLog 从 v3.2.0.2-Release 开始，以前的 ChangeLog 请见 Releases 页面）
 
+v3.2.1-Beta3 (2026/8/2)
+
+- locale 翻译文件改为 Transifex 支持的 JSON 格式：zh.sh / en.sh / zh_TW.sh 迁移为 zh.json / en.json / zh_TW.json，脚本加载逻辑相应更新
+
 v3.2.1-Beta2 (2026/8/2)
 
 - GitHub 代理新增支持 gist 与 GitHub Desktop 发布文件：gist.githubusercontent.com / desktop.githubusercontent.com 域名链接一并替换为代理地址
