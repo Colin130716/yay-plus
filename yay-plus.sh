@@ -2690,8 +2690,11 @@ registry = \"${bun_registry}\"\\
 
 # ---------------------------------------------------------------------------
 # set_ghproxy — 替换当前目录 PKGBUILD 中的 GitHub 链接为代理地址
-#   根据 DEFAULT_GITHUB_PROXY 选择代理，替换 github.com 和
-#   raw.githubusercontent.com 的 URL
+#   根据 DEFAULT_GITHUB_PROXY 选择代理，替换以下域名的 URL：
+#     github.com（分支/标签源码、Release 文件、git clone）
+#     raw.githubusercontent.com（raw 文件）
+#     gist.githubusercontent.com（gist raw 文件）
+#     desktop.githubusercontent.com（GitHub Desktop 客户端发布文件）
 #   仅当 source* 字段含 github.com / *.githubusercontent.com 时才替换
 #   必须在目标包目录中调用（操作 ./PKGBUILD）
 # ---------------------------------------------------------------------------
@@ -2702,26 +2705,36 @@ set_ghproxy() {
                 log "$(_ LOG_GITHUB_PROXY_AKAMS)"
                 sed -i 's#https://github.com/#https://github.akams.cn/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://github.akams.cn/https://raw.githubusercontent.com/#g' PKGBUILD
+                sed -i 's#https://gist.githubusercontent.com/#https://github.akams.cn/https://gist.githubusercontent.com/#g' PKGBUILD
+                sed -i 's#https://desktop.githubusercontent.com/#https://github.akams.cn/https://desktop.githubusercontent.com/#g' PKGBUILD
                 ;;
             2)
                 log "$(_ LOG_GITHUB_PROXY_GH_PROXY)"
                 sed -i 's#https://github.com/#https://gh-proxy.com/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://gh-proxy.com/https://raw.githubusercontent.com/#g' PKGBUILD
+                sed -i 's#https://gist.githubusercontent.com/#https://gh-proxy.com/https://gist.githubusercontent.com/#g' PKGBUILD
+                sed -i 's#https://desktop.githubusercontent.com/#https://gh-proxy.com/https://desktop.githubusercontent.com/#g' PKGBUILD
                 ;;
             3)
                 log "$(_ LOG_GITHUB_PROXY_GH_DPIK)"
                 sed -i 's#https://github.com/#https://gh.dpik.top/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://gh.dpik.top/https://raw.githubusercontent.com/#g' PKGBUILD
+                sed -i 's#https://gist.githubusercontent.com/#https://gh.dpik.top/https://gist.githubusercontent.com/#g' PKGBUILD
+                sed -i 's#https://desktop.githubusercontent.com/#https://gh.dpik.top/https://desktop.githubusercontent.com/#g' PKGBUILD
                 ;;
             4)
                 log "$(_ LOG_GITHUB_PROXY_LLKK)"
                 sed -i 's#https://github.com/#https://gh.llkk.cc/https://github.com/#g' PKGBUILD
                 sed -i 's#https://raw.githubusercontent.com/#https://gh.llkk.cc/https://raw.githubusercontent.com/#g' PKGBUILD
+                sed -i 's#https://gist.githubusercontent.com/#https://gh.llkk.cc/https://gist.githubusercontent.com/#g' PKGBUILD
+                sed -i 's#https://desktop.githubusercontent.com/#https://gh.llkk.cc/https://desktop.githubusercontent.com/#g' PKGBUILD
                 ;;
             https://*|http://*)
                 log "$(_ LOG_GITHUB_PROXY_CUSTOM "$DEFAULT_GITHUB_PROXY")"
                 sed -i "s#https://github.com/#${DEFAULT_GITHUB_PROXY}https://github.com/#g" PKGBUILD
                 sed -i "s#https://raw.githubusercontent.com/#${DEFAULT_GITHUB_PROXY}https://raw.githubusercontent.com/#g" PKGBUILD
+                sed -i "s#https://gist.githubusercontent.com/#${DEFAULT_GITHUB_PROXY}https://gist.githubusercontent.com/#g" PKGBUILD
+                sed -i "s#https://desktop.githubusercontent.com/#${DEFAULT_GITHUB_PROXY}https://desktop.githubusercontent.com/#g" PKGBUILD
                 ;;
             *)
                 log "$(_ LOG_GITHUB_PROXY_NONE)"
