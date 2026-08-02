@@ -8,7 +8,7 @@ arch=('any')
 url="https://github.com/Colin130716/yay-plus"
 license=('GPL3')
 depends=('git' 'base-devel' 'flatpak' 'jq' 'bash' 'vim')
-optdepends=('npm: 用于 npm/yarn 换源' 'yarn: 用于 npm/yarn 换源')
+optdepends=('npm: 用于 npm/yarn/bun 换源' 'yarn: 用于 npm/yarn/bun 换源' 'bun: 用于 npm/yarn/bun 换源')
 source=("https://github.com/Colin130716/yay-plus/releases/download/v3.2.1-Beta2/yay-plus.sh"
         "https://github.com/Colin130716/yay-plus/releases/download/v3.2.1-Beta2/zh.sh"
         "https://github.com/Colin130716/yay-plus/releases/download/v3.2.1-Beta2/en.sh"
