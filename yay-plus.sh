@@ -116,7 +116,7 @@ fi
 readonly LOCALE_DIR
 
 # --- 默认配置（可被 ~/.yay-plus/yay-plus.conf 覆盖） ---
-# GitHub 代理: 1=akams.cn  2=gh-proxy.com  3=geekertao.top  4=llkk.cc  5=不使用
+# GitHub 代理: 1=akams.cn  2=gh-proxy.com  3=gh.dpik.top  4=llkk.cc  5=不使用
 DEFAULT_GITHUB_PROXY="1"
 # NPM 镜像: true→使用 npmmirror.com 加速
 DEFAULT_NPM_PROXY="true"

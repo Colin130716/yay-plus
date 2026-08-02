@@ -13,7 +13,7 @@ source=("https://github.com/Colin130716/yay-plus/releases/download/v3.2.1-Beta2/
         "https://github.com/Colin130716/yay-plus/releases/download/v3.2.1-Beta2/zh.sh"
         "https://github.com/Colin130716/yay-plus/releases/download/v3.2.1-Beta2/en.sh"
         "https://github.com/Colin130716/yay-plus/releases/download/v3.2.1-Beta2/zh_TW.sh")
-sha256sums=('3cfcd89e51fd1346a1e5bf8ce06d3ddee591165df40762b2074af8049cf855a9'
+sha256sums=('ead95188c9690832cf3389bbb01c6523ef3634dc6d3339682d97141282bb7021'
             '3bfef9f5e8dfc8fe7aff6684f9fcb881befed6943cba2c4cac911d127e99a186'
             '0a96c3926ed07de1f38598d66ada55b2646315bb774b85c55dbb478f5604b917'
             'cfac75b0bf3feedc8679260b01deb7b02e4242cee5ae69919dbe0b4105580914')
