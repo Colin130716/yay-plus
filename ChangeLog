@@ -2,6 +2,10 @@
 
 （提示：本 ChangeLog 从 v3.2.0.2-Release 开始，以前的 ChangeLog 请见 Releases 页面）
 
+v3.2.1-Beta4 (2026/8/5)
+
+- 修复 pacman -Si 字段解析在中文 locale 下失效的问题：统一使用 LC_ALL=C 强制英文字段名，修复 Archive 依赖下载时 any 架构包被错误回退为 x86_64 导致下载失败的问题
+
 v3.2.1-Beta3 (2026/8/2)
 
 - locale 翻译文件改为 Transifex 支持的 JSON 格式：zh.sh / en.sh / zh_TW.sh 迁移为 zh.json / en.json / zh_TW.json，脚本加载逻辑相应更新

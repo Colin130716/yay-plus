@@ -913,7 +913,7 @@ process_dependencies() {
                 # 对于 <=：如果仓库当前版本已满足，直接安装仓库版本
                 if [ "$dep_ct" = "<=" ]; then
                     local repo_ver
-                    repo_ver=$(pacman -Si "$dep_name" 2>/dev/null | grep '^Version' | awk '{print $3}')
+                    repo_ver=$(LC_ALL=C pacman -Si "$dep_name" 2>/dev/null | grep '^Version' | awk '{print $3}')
                     if [ -n "$repo_ver" ] && [ "$(ver_cmp "$repo_ver" "$dep_ver")" != "2" ]; then
                         print_color "$CYAN" "$(_ INSTALLING_OFFICIAL_DEP_VER "$dep_name" "$repo_ver" "$dep_ver")"
                         sudo pacman -S $NOCONFIRM_FLAG "$dep_name"
@@ -922,8 +922,10 @@ process_dependencies() {
                 fi
 
                 # 从 archive.archlinux.org 下载特定版本
+                # 注意: LC_ALL=C 强制英文字段名（中文 locale 下 pacman 输出"架构"而非"Architecture"）
+                # any 架构的包文件名后缀为 -any.pkg.tar.zst，无需特判，直接使用解析出的架构
                 local arch
-                arch=$(pacman -Si "$dep_name" 2>/dev/null | grep '^Architecture' | awk '{print $3}')
+                arch=$(LC_ALL=C pacman -Si "$dep_name" 2>/dev/null | grep '^Architecture' | awk '{print $3}')
                 arch="${arch:-x86_64}"
                 local first_letter="${dep_name:0:1}"
 
@@ -953,7 +955,7 @@ process_dependencies() {
             ">="|">")
                 # 去掉版本约束，正常安装最新版
                 print_color "$CYAN" "$(_ INSTALLING_OFFICIAL_DEP "$dep_name")"
-                if pacman -Si "$dep_name" >/dev/null 2>&1; then
+                if LC_ALL=C pacman -Si "$dep_name" >/dev/null 2>&1; then
                     sudo pacman -S $NOCONFIRM_FLAG "$dep_name"
                 else
                     install_aur_dep "$dep_name"
@@ -966,7 +968,7 @@ process_dependencies() {
 
             "")
                 # 无约束，走原有流程
-                if pacman -Si "$dep_name" >/dev/null 2>&1; then
+                if LC_ALL=C pacman -Si "$dep_name" >/dev/null 2>&1; then
                     print_color "$CYAN" "$(_ INSTALLING_OFFICIAL_DEP "$dep_name")"
                     sudo pacman -S $NOCONFIRM_FLAG "$dep_name"
                 else
@@ -1654,7 +1656,7 @@ install_via_pacman() {
     local package="$1"
     log "$(_ LOG_CMD_INSTALL_PACMAN "$package")"
     local package_info
-    package_info=$(pacman -Si "$package" 2>/dev/null)
+    package_info=$(LC_ALL=C pacman -Si "$package" 2>/dev/null)
     if [ -n "$package_info" ]; then
         print_color "$BLUE" "$(_ PACMAN_ABOUT)"
         local repo; repo=$(echo "$package_info" | grep "^Repository" | cut -d: -f2 | tr -d ' ')
@@ -1766,7 +1768,7 @@ install_via_pacman_multi() {
     print_color "$BLUE" "$(_ PACMAN_ABOUT)"
     for pkg in "${packages[@]}"; do
         local package_info
-        package_info=$(pacman -Si "$pkg" 2>/dev/null)
+        package_info=$(LC_ALL=C pacman -Si "$pkg" 2>/dev/null)
         if [ -n "$package_info" ]; then
             local repo; repo=$(echo "$package_info" | grep "^Repository" | cut -d: -f2 | tr -d ' ')
             local name; name=$(echo "$package_info" | grep "^Name" | cut -d: -f2 | tr -d ' ')
@@ -1822,7 +1824,7 @@ install_auto_multi() {
     
     print_color "$CYAN" "$(_ INSTALL_MULTI_SCAN)"
     for pkg in "${packages[@]}"; do
-        if pacman -Si "$pkg" >/dev/null 2>&1; then
+        if LC_ALL=C pacman -Si "$pkg" >/dev/null 2>&1; then
             pacman_packages+=("$pkg")
             print_color "$GREEN" "$(_ INSTALL_MULTI_OFFICIAL "$pkg")"
         else

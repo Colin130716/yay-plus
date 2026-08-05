@@ -5,9 +5,9 @@
         "date": ""
     },
     "beta": {
-        "version": "v3.2.1-Beta3",
-        "filename": "yay-plus-3:3.2.1-3-any.pkg.tar.zst",
-        "date": "2026/8/2"
+        "version": "v3.2.1-Beta4",
+        "filename": "yay-plus-3:3.2.1-4-any.pkg.tar.zst",
+        "date": "2026/8/5"
     },
     "release": {
         "version": "v3.2.0.2-Release",
