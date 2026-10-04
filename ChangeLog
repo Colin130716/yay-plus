@@ -2,6 +2,11 @@
 
 （提示：本 ChangeLog 从 v3.2.0.2-Release 开始，以前的 ChangeLog 请见 Releases 页面）
 
+v3.2.1-Beta6 (2026/10/4)
+
+- 修复自更新 beta 通道无法检测 Beta 小版本更新的问题：版本比较现在包含 `-BetaN` 后缀（小版本号取自 pkgrel），`--self-update beta` 可正确检测 Beta4→Beta5 这类同基础版本号的更新
+- 修复自更新可能提示降级安装的问题：release/beta 通道在远端版本不比本地新时不再提示，避免将 3.2.1 用户引导到旧的 3.2.0.2-Release
+
 v3.2.1-Beta5 (2026/8/29)
 
 - 新增支持裸 `-U` 参数：`yay-plus -U` 现在可直接执行系统更新，不再要求必须使用组合型 `-Ua/-Up/-Uf/-Ul`

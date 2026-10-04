@@ -169,6 +169,8 @@ readonly VERSION_JSON_URL="https://yayplus.qzz.io/version.json"
 readonly SELF_UPDATE_STATE="$HOME/.yay-plus/.self-update"
 # 脚本版本号
 YAY_PLUS_VERSION="3.2.1"
+# Beta 小版本号（对应包版本 pkgrel，自更新 beta 通道比较用）
+YAY_PLUS_PKGREL="6"
 # GitHub 上 AUR 的镜像仓库地址（load_config 根据代理设置动态替换）
 # shellcheck disable=SC2034
 AUR_GITHUB_MIRROR="https://github.com/archlinux/aur.git"
@@ -2560,13 +2562,23 @@ self_update() {
         return 0
     fi
 
-    # 规范化版本号比较：去除 v 前缀和 -后缀，提取纯数字版本
+    # 规范化版本号比较：去除 v 前缀；beta 通道保留 -BetaN 后缀（小版本号在 pkgrel 中）
     local local_ver="${YAY_PLUS_VERSION#v}"
     local remote_normalized="${remote_version#v}"
-    remote_normalized="${remote_normalized%%-*}"
+    if [ "$channel" = "beta" ]; then
+        local_ver="${local_ver}-Beta${YAY_PLUS_PKGREL}"
+    else
+        remote_normalized="${remote_normalized%%-*}"
+    fi
 
     if [ "$local_ver" = "$remote_normalized" ]; then
-        print_color "$GREEN" "$(_ SELF_UPDATE_LATEST "$YAY_PLUS_VERSION")"
+        print_color "$GREEN" "$(_ SELF_UPDATE_LATEST "$local_ver")"
+        return 0
+    fi
+
+    # 远端版本不比本地新（版本回退/旧版本）→ 不提示，避免降级安装
+    if [ "$(ver_cmp "$remote_normalized" "$local_ver")" = "1" ]; then
+        print_color "$GREEN" "$(_ SELF_UPDATE_LATEST "$local_ver")"
         return 0
     fi
 
