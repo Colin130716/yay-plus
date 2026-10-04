@@ -135,7 +135,7 @@ readonly LOCALE_DIR
 DEFAULT_GITHUB_PROXY="1"
 # NPM 镜像: true→使用 npmmirror.com 加速
 DEFAULT_NPM_PROXY="true"
-# kernel.org 镜像: true→替换为中科大镜像
+# kernel.org 镜像: true→替换为南京大学镜像
 DEFAULT_KERNEL_ORG_PROXY="true"
 # AUR 克隆源: "aur"=官方  "github"=GitHub 镜像
 DEFAULT_AUR_SOURCE="aur"
@@ -149,6 +149,8 @@ NOCONFIRM="false"
 NOCONFIRM_FLAG=""
 # flatpak 确认标志（--noconfirm 时设为 -y，否则为空）
 FLATPAK_ASSUMEYES=""
+# 安装成功后自动删除当前 AUR 克隆目录: true→删除
+REMOVE_AFTER_INSTALL="false"
 # 强制刷新 AUR 缓存: true→忽略 TTL，强制重新拉取
 FORCE_AUR_REFRESH="false"
 # 自更新通道: release / beta / dev
@@ -650,10 +652,10 @@ get_aur_package_info() {
 }
 
 # ---------------------------------------------------------------------------
-# get_aur_dependencies — 从 AUR RPC 获取包的编译+运行依赖列表
+# get_aur_dependencies — 从 AUR RPC 获取包的编译/运行/测试依赖列表
 #   参数: $1=包名
 #   输出: 去重后的依赖包名列表（每行一个），过滤掉 .so 依赖
-#   来源: Depends[] 和 MakeDepends[]
+#   来源: Depends[]、MakeDepends[] 和 CheckDepends[]（与 parse_pkgbuild_deps 保持一致）
 # ---------------------------------------------------------------------------
 get_aur_dependencies() {
     local package="$1"
@@ -662,7 +664,8 @@ get_aur_dependencies() {
     if echo "$aur_info" | grep -q '"resultcount":1'; then
         local depends; depends=$(get_json_field "$aur_info" "Depends[]")
         local makedepends; makedepends=$(get_json_field "$aur_info" "MakeDepends[]")
-        echo "$depends $makedepends" | tr ' ' '\n' | grep -v '\.so$' | grep -v '^$' | sort -u
+        local checkdepends; checkdepends=$(get_json_field "$aur_info" "CheckDepends[]")
+        echo "$depends $makedepends $checkdepends" | tr ' ' '\n' | grep -v '\.so$' | grep -v '^$' | sort -u
     else
         echo ""
     fi
@@ -903,6 +906,12 @@ process_dependencies() {
                     [ "$(ver_cmp "$installed_ver" "$dep_ver")" = "0" ] && continue ;;
                 "<=")
                     [ "$(ver_cmp "$installed_ver" "$dep_ver")" != "2" ] && continue ;;
+                ">=")
+                    [ "$(ver_cmp "$installed_ver" "$dep_ver")" != "1" ] && continue ;;
+                ">")
+                    [ "$(ver_cmp "$installed_ver" "$dep_ver")" = "2" ] && continue ;;
+                "<")
+                    [ "$(ver_cmp "$installed_ver" "$dep_ver")" = "1" ] && continue ;;
                 "")
                     continue ;;  # 无版本约束，已安装则跳过
             esac
@@ -1004,7 +1013,9 @@ install_aur_dep() {
             cd "$_caller_dir" || return 1
             return 1
         fi
-        makepkg -si --skippgpcheck $NOCONFIRM_FLAG --asdeps
+        if makepkg -si --skippgpcheck $NOCONFIRM_FLAG --asdeps; then
+            remove_aur_build_dir "$PACKAGE_DIR/$dep_name"
+        fi
         cd "$_caller_dir" || return 1
     else
         print_color "$YELLOW" "$(_ AUR_DEP_NOT_FOUND "$dep_name")"
@@ -1053,6 +1064,7 @@ show_help() {
     echo -e "$(_ HELP_INSTALL_AUR)"
     echo -e "$(_ HELP_INSTALL_FLATPAK)"
     echo -e "$(_ HELP_INSTALL_AUTO)"
+    echo -e "$(_ HELP_REMOVE_AFTER_INSTALL)"
     echo ""
     echo -e "$(_ HELP_REMOVE)"
     echo -e "$(_ HELP_REMOVE_PACMAN)"
@@ -1127,7 +1139,7 @@ parse_args() {
     local query_scope=""
     local update_mode=""
     local clean_mode=""
-    local local_install_path=""
+    local local_install_paths=()
     local package_names=()
     local query_type=""
 
@@ -1136,7 +1148,7 @@ parse_args() {
         case $1 in
             -S*|--install)
                 install_mode="generic"
-                # 组合短选项: 支持 -Sp/-Sa/-Sf/-Su，多字母取最后一个
+                # 组合短选项: 支持 -Sp/-Sa/-Sf/-Su/-Sr，多字母取最后一个
                 local _combined="${1#-S}"
                 shift
                 if [ -n "$_combined" ]; then
@@ -1148,6 +1160,7 @@ parse_args() {
                             a) install_mode="aur" ;;
                             f) install_mode="flatpak" ;;
                             u) install_mode="auto" ;;
+                            r) REMOVE_AFTER_INSTALL="true" ;;
                             *) print_color "$RED" "$(_ UNKNOWN_SUBOPTION "S" "$_ch" "S" "$_combined")"; exit 1 ;;
                         esac
                     done
@@ -1159,7 +1172,12 @@ parse_args() {
                 done
                 continue
                 ;;
-            -R*|--remove)
+            -r|--remove)
+                REMOVE_AFTER_INSTALL="true"
+                shift
+                continue
+                ;;
+            -R*|--uninstall)
                 remove_mode="generic"
                 # 组合短选项: -R + 子选项字母，多字母取最后一个
                 local _combined="${1#-R}"
@@ -1209,6 +1227,10 @@ parse_args() {
                 done
                 continue
                 ;;
+            -U|--update)
+                update_mode="generic"
+                shift
+                ;;
             -U*|--update)
                 update_mode="generic"
                 # 组合短选项: -U + 子选项字母，多字母取最后一个
@@ -1230,10 +1252,11 @@ parse_args() {
                 ;;
             -L|--local-install)
                 shift
-                if [[ $# -gt 0 && ! $1 =~ ^- ]]; then
-                    local_install_path="$1"
+                while [[ $# -gt 0 && ! $1 =~ ^- ]]; do
+                    local_install_paths+=("$1")
                     shift
-                else
+                done
+                if [ ${#local_install_paths[@]} -eq 0 ]; then
                     print_color "$RED" "$(_ LOCAL_INSTALL_NEED_PATH)"
                     exit 1
                 fi
@@ -1406,11 +1429,11 @@ parse_args() {
                 ;;
         esac
     done
-    log "$(_ LOG_PARSE_RESULT "install_mode=$install_mode, remove_mode=$remove_mode, query_mode=$query_mode, update_mode=$update_mode, clean_mode=$clean_mode, local_install_path=$local_install_path, package_names=(${package_names[*]})")"
+    log "$(_ LOG_PARSE_RESULT "install_mode=$install_mode, remove_mode=$remove_mode, query_mode=$query_mode, update_mode=$update_mode, clean_mode=$clean_mode, remove_after_install=$REMOVE_AFTER_INSTALL, local_install_paths=(${local_install_paths[*]}) , package_names=(${package_names[*]})")"
 
-    if [ -n "$local_install_path" ]; then
-        local_install "$local_install_path"
-        exit 0
+    if [ ${#local_install_paths[@]} -gt 0 ]; then
+        local_install_multi "${local_install_paths[@]}"
+        exit $?
     elif [ -n "$install_mode" ]; then
         if [ ${#package_names[@]} -eq 0 ]; then
             print_color "$RED" "$(_ INSTALL_NEED_PACKAGE)"
@@ -1532,7 +1555,7 @@ local_install() {
     local path="$1"
     if [ ! -e "$path" ]; then
         print_color "$RED" "$(_ LOCAL_PATH_NOT_EXIST "$path")"
-        exit 1
+        return 1
     fi
     log "$(_ LOG_LOCAL_INSTALL "$path")"
     if [ -d "$path" ]; then
@@ -1548,13 +1571,49 @@ local_install() {
             *)
                 print_color "$RED" "$(_ LOCAL_UNSUPPORTED_TYPE "$path")"
                 print_color "$YELLOW" "$(_ LOCAL_SUPPORTED_TYPES)"
-                exit 1
+                return 1
                 ;;
         esac
     else
         print_color "$RED" "$(_ LOCAL_INVALID_PATH "$path")"
-        exit 1
+        return 1
     fi
+}
+
+# ---------------------------------------------------------------------------
+# local_install_multi — 批量安装多个本地路径
+#   参数: 任意数量的本地路径
+# ---------------------------------------------------------------------------
+local_install_multi() {
+    local path
+    local failed=0
+    local total=$#
+    local index=0
+
+    for path in "$@"; do
+        index=$((index + 1))
+        print_color "$CYAN" "[$index/$total] $path"
+        if ! (local_install "$path"); then
+            failed=1
+            print_color "$RED" "$(_ LOCAL_FAILED "$path")"
+        fi
+        echo ""
+    done
+
+    return "$failed"
+}
+
+remove_aur_build_dir() {
+    local dir_path="$1"
+    if [ "$REMOVE_AFTER_INSTALL" != "true" ]; then
+        return 0
+    fi
+    if [ -z "$dir_path" ] || [ ! -d "$dir_path" ]; then
+        return 0
+    fi
+    print_color "$YELLOW" "$(_ REMOVE_AUR_CLONE_DIR "$dir_path")"
+    rm -rf -- "$dir_path"
+    return 0
 }
 
 # ---------------------------------------------------------------------------
@@ -1596,6 +1655,7 @@ local_install_aur() {
     print_color "$CYAN" "$(_ LOCAL_BUILDING)"
     if makepkg -si --skippgpcheck $NOCONFIRM_FLAG; then
         print_color "$GREEN" "$(_ LOCAL_SUCCESS "$pkgname")"
+        remove_aur_build_dir "$dir_path"
     else
         print_color "$RED" "$(_ LOCAL_FAILED "$pkgname")"
         exit 1
@@ -1725,8 +1785,11 @@ install_via_aur() {
         print_color "$YELLOW" "$(_ INSTALL_CANCELED)"
         return 0
     fi
-    makepkg -si --skippgpcheck $NOCONFIRM_FLAG
-    return 0
+    if makepkg -si --skippgpcheck $NOCONFIRM_FLAG; then
+        remove_aur_build_dir "$PACKAGE_DIR/$actual_repo"
+        return 0
+    fi
+    return 1
 }
 
 # ---------------------------------------------------------------------------
@@ -2692,9 +2755,9 @@ registry = \"${bun_registry}\"\\
     if pkgbuild_source_has_domain 'www\.kernel\.org|cdn\.kernel\.org'; then
         case $DEFAULT_KERNEL_ORG_PROXY in
             true)
-                log "$(_ LOG_REPLACE_KERNEL_MIRROR "https://mirrors.ustc.edu.cn/kernel.org/")"
-                sed -i 's#https://www.kernel.org/pub/#https://mirrors.ustc.edu.cn/kernel.org/#g' PKGBUILD
-                sed -i 's#https://cdn.kernel.org/pub/#https://mirrors.ustc.edu.cn/kernel.org/#g' PKGBUILD
+                log "$(_ LOG_REPLACE_KERNEL_MIRROR "https://mirrors.nju.edu.cn/kernel.org/")"
+                sed -i 's#https://www.kernel.org/pub/#https://mirrors.nju.edu.cn/kernel.org/#g' PKGBUILD
+                sed -i 's#https://cdn.kernel.org/pub/#https://mirrors.nju.edu.cn/kernel.org/#g' PKGBUILD
                 ;;
             https://*|http://*)
                 log "$(_ LOG_REPLACE_KERNEL_MIRROR "$DEFAULT_KERNEL_ORG_PROXY")"
@@ -2717,46 +2780,46 @@ registry = \"${bun_registry}\"\\
 # ---------------------------------------------------------------------------
 set_ghproxy() {
     if [ -n "$DEFAULT_GITHUB_PROXY" ] && pkgbuild_source_has_domain 'github\.com|githubusercontent\.com'; then
+        local gh_proxy_base=""
         case $DEFAULT_GITHUB_PROXY in
             1)
+                gh_proxy_base="https://github.akams.cn"
                 log "$(_ LOG_GITHUB_PROXY_AKAMS)"
-                sed -i 's#https://github.com/#https://github.akams.cn/https://github.com/#g' PKGBUILD
-                sed -i 's#https://raw.githubusercontent.com/#https://github.akams.cn/https://raw.githubusercontent.com/#g' PKGBUILD
-                sed -i 's#https://gist.githubusercontent.com/#https://github.akams.cn/https://gist.githubusercontent.com/#g' PKGBUILD
-                sed -i 's#https://desktop.githubusercontent.com/#https://github.akams.cn/https://desktop.githubusercontent.com/#g' PKGBUILD
                 ;;
             2)
+                gh_proxy_base="https://gh-proxy.com"
                 log "$(_ LOG_GITHUB_PROXY_GH_PROXY)"
-                sed -i 's#https://github.com/#https://gh-proxy.com/https://github.com/#g' PKGBUILD
-                sed -i 's#https://raw.githubusercontent.com/#https://gh-proxy.com/https://raw.githubusercontent.com/#g' PKGBUILD
-                sed -i 's#https://gist.githubusercontent.com/#https://gh-proxy.com/https://gist.githubusercontent.com/#g' PKGBUILD
-                sed -i 's#https://desktop.githubusercontent.com/#https://gh-proxy.com/https://desktop.githubusercontent.com/#g' PKGBUILD
                 ;;
             3)
+                gh_proxy_base="https://gh.dpik.top"
                 log "$(_ LOG_GITHUB_PROXY_GH_DPIK)"
-                sed -i 's#https://github.com/#https://gh.dpik.top/https://github.com/#g' PKGBUILD
-                sed -i 's#https://raw.githubusercontent.com/#https://gh.dpik.top/https://raw.githubusercontent.com/#g' PKGBUILD
-                sed -i 's#https://gist.githubusercontent.com/#https://gh.dpik.top/https://gist.githubusercontent.com/#g' PKGBUILD
-                sed -i 's#https://desktop.githubusercontent.com/#https://gh.dpik.top/https://desktop.githubusercontent.com/#g' PKGBUILD
                 ;;
             4)
+                gh_proxy_base="https://gh.llkk.cc"
                 log "$(_ LOG_GITHUB_PROXY_LLKK)"
-                sed -i 's#https://github.com/#https://gh.llkk.cc/https://github.com/#g' PKGBUILD
-                sed -i 's#https://raw.githubusercontent.com/#https://gh.llkk.cc/https://raw.githubusercontent.com/#g' PKGBUILD
-                sed -i 's#https://gist.githubusercontent.com/#https://gh.llkk.cc/https://gist.githubusercontent.com/#g' PKGBUILD
-                sed -i 's#https://desktop.githubusercontent.com/#https://gh.llkk.cc/https://desktop.githubusercontent.com/#g' PKGBUILD
                 ;;
             https://*|http://*)
+                gh_proxy_base="${DEFAULT_GITHUB_PROXY%/}"
                 log "$(_ LOG_GITHUB_PROXY_CUSTOM "$DEFAULT_GITHUB_PROXY")"
-                sed -i "s#https://github.com/#${DEFAULT_GITHUB_PROXY}https://github.com/#g" PKGBUILD
-                sed -i "s#https://raw.githubusercontent.com/#${DEFAULT_GITHUB_PROXY}https://raw.githubusercontent.com/#g" PKGBUILD
-                sed -i "s#https://gist.githubusercontent.com/#${DEFAULT_GITHUB_PROXY}https://gist.githubusercontent.com/#g" PKGBUILD
-                sed -i "s#https://desktop.githubusercontent.com/#${DEFAULT_GITHUB_PROXY}https://desktop.githubusercontent.com/#g" PKGBUILD
                 ;;
             *)
                 log "$(_ LOG_GITHUB_PROXY_NONE)"
+                return 0
                 ;;
         esac
+
+        # 去重：避免在已代理 URL 上再次叠加代理前缀，导致 gh.dpik.top/gh.dpik.top/https://github.com
+        if [ -n "$gh_proxy_base" ]; then
+            sed -i "s#${gh_proxy_base}/https://github.com/#https://github.com/#g" PKGBUILD
+            sed -i "s#${gh_proxy_base}/https://raw.githubusercontent.com/#https://raw.githubusercontent.com/#g" PKGBUILD
+            sed -i "s#${gh_proxy_base}/https://gist.githubusercontent.com/#https://gist.githubusercontent.com/#g" PKGBUILD
+            sed -i "s#${gh_proxy_base}/https://desktop.githubusercontent.com/#https://desktop.githubusercontent.com/#g" PKGBUILD
+
+            sed -i "s#https://github.com/#${gh_proxy_base}/https://github.com/#g" PKGBUILD
+            sed -i "s#https://raw.githubusercontent.com/#${gh_proxy_base}/https://raw.githubusercontent.com/#g" PKGBUILD
+            sed -i "s#https://gist.githubusercontent.com/#${gh_proxy_base}/https://gist.githubusercontent.com/#g" PKGBUILD
+            sed -i "s#https://desktop.githubusercontent.com/#${gh_proxy_base}/https://desktop.githubusercontent.com/#g" PKGBUILD
+        fi
     fi
 }
 

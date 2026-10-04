@@ -2,6 +2,14 @@
 
 （提示：本 ChangeLog 从 v3.2.0.2-Release 开始，以前的 ChangeLog 请见 Releases 页面）
 
+v3.2.1-Beta5 (2026/8/29)
+
+- 新增支持裸 `-U` 参数：`yay-plus -U` 现在可直接执行系统更新，不再要求必须使用组合型 `-Ua/-Up/-Uf/-Ul`
+- 切换 kernel.org 默认镜像为南京大学源：默认使用 `https://mirrors.nju.edu.cn/kernel.org/`
+- 新增 AUR 安装后清理克隆目录：`-r` / `--remove` 仅在 `makepkg` 成功时删除当前 AUR 包目录，减少本地构建残留
+- 修复 GitHub 代理重复叠加问题：避免已代理 URL 在再次编译时被重复包装成 `gh.dpik.top/gh.dpik.top/...`
+- 修复带 `>=`/`>`/`<` 版本约束的依赖已安装时未被检测到的问题：中断后重新安装不再重复克隆、重装已满足约束的 AUR 依赖
+
 v3.2.1-Beta4 (2026/8/5)
 
 - 修复 pacman -Si 字段解析在中文 locale 下失效的问题：统一使用 LC_ALL=C 强制英文字段名，修复 Archive 依赖下载时 any 架构包被错误回退为 x86_64 导致下载失败的问题
